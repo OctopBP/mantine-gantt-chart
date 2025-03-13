@@ -1,0 +1,37 @@
+import { InstallScript } from './components/InstallScript/InstallScript';
+import * as demos from './demos';
+
+## Installation
+
+<InstallScript packages="mantine-extension-template" />
+
+## Regular demo
+
+<Demo data={demos.usage} />
+
+## Configurator demo
+
+<Demo data={demos.configurator} />
+
+## Other subtitle
+
+Other content
+
+> **Note:** This is a note
+> You can use markdown in this block as well
+>
+> - List item 1
+> - List item 2
+>   As well as links: [Mantine](https://mantine.dev)
+>
+> And inline code `npm install mantine`
+>
+> And code blocks:
+>
+> ```tsx
+> import { Button } from '@mantine/core';
+>
+> function App() {
+>   return <Button>Hello</Button>;
+> }
+> ```
