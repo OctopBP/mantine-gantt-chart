@@ -1,7 +1,7 @@
-export { TestComponent } from './TestComponent';
+export { GanttChart } from './GanttChart';
 export type {
-  TestComponentProps,
-  TestComponentCssVariables,
-  TestComponentFactory,
-  TestComponentStylesNames,
-} from './TestComponent';
+  GanttChartProps,
+  GanttChartCssVariables,
+  GanttChartFactory,
+  GanttChartStylesNames,
+} from './GanttChart';
