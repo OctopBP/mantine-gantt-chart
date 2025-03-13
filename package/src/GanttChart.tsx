@@ -1,8 +1,19 @@
 import {
-    Box, BoxProps, createVarsResolver, ElementProps, factory, Factory, getThemeColor, MantineColor,
-    ScrollArea, StylesApiProps, useProps, useStyles
-} from '@mantine/core'
-import classes from './GanttChart.module.css'
+  Box,
+  BoxProps,
+  createVarsResolver,
+  ElementProps,
+  factory,
+  Factory,
+  MantineColor,
+  ScrollArea,
+  Select,
+  StylesApiProps,
+  Text,
+  useProps,
+  useStyles,
+} from '@mantine/core';
+import classes from './GanttChart.module.css';
 
 export type GanttChartStylesNames =
   | 'root'
@@ -13,9 +24,8 @@ export type GanttChartStylesNames =
   | 'tasksView'
   | 'tableCell'
   | 'task';
-export type GanttChartCssVariables = {
-  root: '--test-component-color';
-};
+
+export type GanttChartCssVariables = {};
 
 export interface GanttChartData {
   id: string;
@@ -30,6 +40,9 @@ export interface GanttChartProps
     ElementProps<'div'> {
   /** Data for the Gantt chart */
   data: GanttChartData[];
+
+  /** The date that is currently focused */
+  focusedDate?: Date;
 
   /** Controls `background-color` of the root element, key of `theme.colors` or any valid CSS color, `theme.primaryColor` by default */
   color?: MantineColor;
@@ -46,15 +59,14 @@ const defaultProps: Partial<GanttChartProps> = {
   data: [],
 };
 
-const varsResolver = createVarsResolver<GanttChartFactory>((theme, { color }) => ({
-  root: {
-    '--test-component-color': getThemeColor(color, theme),
-  },
+const varsResolver = createVarsResolver<GanttChartFactory>(() => ({
+  root: {},
 }));
 
 export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const props = useProps('GanttChart', defaultProps, _props);
-  const { classNames, className, style, styles, unstyled, vars, data, ...others } = props;
+  const { classNames, className, style, styles, unstyled, vars, data, focusedDate, ...others } =
+    props;
 
   const getStyles = useStyles<GanttChartFactory>({
     name: 'GanttChart',
@@ -82,7 +94,10 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       </Box>
 
       <Box {...getStyles('main')}>
-        <Box {...getStyles('controls')}>Controls</Box>
+        <Box {...getStyles('controls')}>
+          <Text>2025</Text>
+          <Select data={['hours', 'days', 'weeks', 'months']} />
+        </Box>
         <ScrollArea>
           <Box {...getStyles('dates')}>1 2 3 4 5 6 7 8 9 10</Box>
           <Box {...getStyles('tasksView')}>
