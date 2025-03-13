@@ -28,9 +28,9 @@ export const PACKAGE_DATA: PackageData = {
   packageName: 'mantine-gantt-chart',
   packageDescription:
     'A template for mantine extensions, includes full setup for package development and documentation',
-  mdxFileUrl: 'https://github.com/rtivital/mantine-gantt-chart/blob/master/docs/pages/index.mdx',
-  repositoryUrl: 'https://github.com/rtivital/mantine-gantt-chart',
-  licenseUrl: 'https://github.com/rtivital/mantine-gantt-chart/blob/master/LICENSE',
+  mdxFileUrl: 'https://github.com/OctopBP/mantine-gantt-chart/blob/master/docs/pages/index.mdx',
+  repositoryUrl: 'https://github.com/OctopBP/mantine-gantt-chart',
+  licenseUrl: 'https://github.com/OctopBP/mantine-gantt-chart/blob/master/LICENSE',
   author: {
     name: 'Vitaly Rtishchev',
     githubUsername: 'rtivital',
