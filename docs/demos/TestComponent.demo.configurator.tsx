@@ -1,9 +1,8 @@
-import React from 'react';
-import { TestComponent } from 'mantine-extension-template';
-import { MantineDemo } from '@mantinex/demo';
+import { TestComponent } from 'mantine-gantt-chart'
+import { MantineDemo } from '@mantinex/demo'
 
 const code = `
-import { TestComponent } from 'mantine-extension-template';
+import { TestComponent } from 'mantine-gantt-chart';
 
 function Demo() {
   return <TestComponent{{props}} />;

@@ -1,8 +1,8 @@
 {
-  "name": "mantine-extension-template",
+  "name": "mantine-gantt-chart",
   "version": "0.2.2",
   "description": "A template for Mantine extensions",
-  "homepage": "https://github.com/rtivital/mantine-extension-template#readme",
+  "homepage": "https://github.com/rtivital/mantine-gantt-chart#readme",
   "packageManager": "yarn@4.0.1",
   "license": "MIT",
   "author": "Vitaly Rtishchev <rtivital@gmail.com>",

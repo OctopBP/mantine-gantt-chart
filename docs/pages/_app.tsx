@@ -1,17 +1,15 @@
-import '@mantine/core/styles.css';
-import '@mantinex/shiki/styles.css';
-import '@mantinex/mantine-logo/styles.css';
-import '@mantinex/mantine-header/styles.css';
-import '@mantinex/demo/styles.css';
-import 'mantine-extension-template/styles.css';
-
-import React from 'react';
-import { AppProps } from 'next/app';
-import Head from 'next/head';
-import { MantineProvider } from '@mantine/core';
-import { ShikiProvider } from '@mantinex/shiki';
-import favicon from '../assets/favicon.svg';
-import { theme } from '../theme';
+import { AppProps } from 'next/app'
+import Head from 'next/head'
+import { MantineProvider } from '@mantine/core'
+import { ShikiProvider } from '@mantinex/shiki'
+import favicon from '../assets/favicon.svg'
+import { theme } from '../theme'
+import '@mantine/core/styles.css'
+import '@mantinex/shiki/styles.css'
+import '@mantinex/mantine-logo/styles.css'
+import '@mantinex/mantine-header/styles.css'
+import '@mantinex/demo/styles.css'
+import 'mantine-gantt-chart/styles.css'
 
 async function loadShiki() {
   const { getHighlighter } = await import('shikiji');

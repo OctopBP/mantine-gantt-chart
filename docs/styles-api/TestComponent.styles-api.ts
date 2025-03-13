@@ -1,4 +1,4 @@
-import type { TestComponentFactory } from 'mantine-extension-template';
+import type { TestComponentFactory } from 'mantine-gantt-chart';
 import type { StylesApiData } from '../components/styles-api.types';
 
 export const TestComponentStylesApi: StylesApiData<TestComponentFactory> = {

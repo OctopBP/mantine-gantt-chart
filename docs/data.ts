@@ -1,5 +1,5 @@
 export interface PackageData {
-  /** Package name as in npm, for example, `mantine-extension-template` */
+  /** Package name as in npm, for example, `mantine-gantt-chart` */
   packageName: string;
 
   /** Description of the package, displayed below the title in documentation */
@@ -25,13 +25,12 @@ export interface PackageData {
 }
 
 export const PACKAGE_DATA: PackageData = {
-  packageName: 'mantine-extension-template',
+  packageName: 'mantine-gantt-chart',
   packageDescription:
     'A template for mantine extensions, includes full setup for package development and documentation',
-  mdxFileUrl:
-    'https://github.com/rtivital/mantine-extension-template/blob/master/docs/pages/index.mdx',
-  repositoryUrl: 'https://github.com/rtivital/mantine-extension-template',
-  licenseUrl: 'https://github.com/rtivital/mantine-extension-template/blob/master/LICENSE',
+  mdxFileUrl: 'https://github.com/rtivital/mantine-gantt-chart/blob/master/docs/pages/index.mdx',
+  repositoryUrl: 'https://github.com/rtivital/mantine-gantt-chart',
+  licenseUrl: 'https://github.com/rtivital/mantine-gantt-chart/blob/master/LICENSE',
   author: {
     name: 'Vitaly Rtishchev',
     githubUsername: 'rtivital',
