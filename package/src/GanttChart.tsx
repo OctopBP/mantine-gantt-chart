@@ -21,6 +21,7 @@ export type GanttChartStylesNames =
   | 'main'
   | 'controls'
   | 'dates'
+  | 'dateCell'
   | 'tasksView'
   | 'tableCell'
   | 'task'
@@ -148,12 +149,12 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       <Box {...getStyles('main')}>
         <Box {...getStyles('controls')}>
           <Text>2025</Text>
-          <Select data={['hours', 'days', 'weeks', 'months']} />
+          <Select variant="unstyled" data={['hours', 'days', 'weeks', 'months']} />
         </Box>
         <ScrollArea {...getStyles('scrollArea')}>
           <Box {...getStyles('dates')}>
             {getPeriods().map((period, index) => (
-              <Box key={index} style={{ width: '2rem', display: 'inline-block' }}>
+              <Box {...getStyles('dateCell')} key={index}>
                 {period.getDate()}
               </Box>
             ))}
