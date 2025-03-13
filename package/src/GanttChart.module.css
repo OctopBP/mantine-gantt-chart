@@ -9,12 +9,15 @@
   /* min-height: 400px; */
   /* padding: 0; */
   border: 1px solid red;
+  overflow: hidden;
 }
 
 .table {
   padding-top: 5rem;
-  width: 12rem;
+  min-width: 12rem;
   border: 1px solid orange;
+  height: 100%;
+  overflow: hidden;
 }
 
 .tableCell {
@@ -28,6 +31,7 @@
   height: 100%;
   width: 100%;
   border: 1px solid black;
+  overflow: hidden;
 }
 
 .controls {
@@ -39,21 +43,26 @@
   padding-left: var(--mantine-spacing-sm);
   padding-right: var(--mantine-spacing-sm);
   border: 1px solid blue;
+  flex-shrink: 0;
 }
 
 .scrollArea {
   height: 100%;
+  overflow: hidden;
 }
 
 .dates {
   height: 2.5rem;
   border: 1px solid green;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tasksView {
   flex: 1;
   border: 1px solid yellow;
-  overflow-x: auto;
+  position: relative;
+  overflow: hidden;
 }
 
 .taskLine {

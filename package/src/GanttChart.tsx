@@ -95,16 +95,39 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     };
   };
 
+  // Get all days between start and end date
+  const getDays = () => {
+    const { start, end } = getDateRange();
+    const days = [];
+    const currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      days.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return days;
+  };
+
   // Calculate task position and width
-  const getTaskStyle = (task: GanttChartData, index: number) => {
-    const { start: chartStart, end: chartEnd } = getDateRange();
-    const totalDays = (chartEnd.getTime() - chartStart.getTime()) / (1000 * 60 * 60 * 24);
-    const taskStartDays = (task.start.getTime() - chartStart.getTime()) / (1000 * 60 * 60 * 24);
-    const taskDurationDays = (task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24);
+  const getTaskStyle = (task: GanttChartData) => {
+    const days = getDays();
+    const startIndex = days.findIndex(
+      (day) =>
+        day.getDate() === task.start.getDate() &&
+        day.getMonth() === task.start.getMonth() &&
+        day.getFullYear() === task.start.getFullYear()
+    );
+    const endIndex = days.findIndex(
+      (day) =>
+        day.getDate() === task.end.getDate() &&
+        day.getMonth() === task.end.getMonth() &&
+        day.getFullYear() === task.end.getFullYear()
+    );
 
     return {
-      left: `${(taskStartDays / totalDays) * 100}%`,
-      width: `${(taskDurationDays / totalDays) * 100}%`,
+      left: `${startIndex * 2}rem`,
+      width: `${(endIndex - startIndex + 1) * 2}rem`,
     };
   };
 
@@ -126,11 +149,17 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           <Select data={['hours', 'days', 'weeks', 'months']} />
         </Box>
         <ScrollArea {...getStyles('scrollArea')}>
-          <Box {...getStyles('dates')}>1 2 3 4 5 6 7 8 9 10</Box>
+          <Box {...getStyles('dates')}>
+            {getDays().map((day, index) => (
+              <Box key={index} style={{ width: '2rem', display: 'inline-block' }}>
+                {day.getDate()}
+              </Box>
+            ))}
+          </Box>
           <Box {...getStyles('tasksView')}>
-            {data.map((d, index) => (
+            {data.map((d) => (
               <Box {...getStyles('taskLine')} key={d.id}>
-                <Box {...getStyles('task')} style={getTaskStyle(d, index)}>
+                <Box {...getStyles('task')} style={getTaskStyle(d)}>
                   {d.name}
                 </Box>
               </Box>
