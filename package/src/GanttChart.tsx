@@ -23,7 +23,9 @@ export type GanttChartStylesNames =
   | 'dates'
   | 'tasksView'
   | 'tableCell'
-  | 'task';
+  | 'task'
+  | 'taskLine'
+  | 'scrollArea';
 
 export type GanttChartCssVariables = {};
 
@@ -81,6 +83,31 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     varsResolver,
   });
 
+  // Calculate the date range for the chart
+  const getDateRange = () => {
+    if (data.length === 0) {
+      return { start: new Date(), end: new Date() };
+    }
+    const dates = data.flatMap((task) => [task.start, task.end]);
+    return {
+      start: new Date(Math.min(...dates.map((d) => d.getTime()))),
+      end: new Date(Math.max(...dates.map((d) => d.getTime()))),
+    };
+  };
+
+  // Calculate task position and width
+  const getTaskStyle = (task: GanttChartData, index: number) => {
+    const { start: chartStart, end: chartEnd } = getDateRange();
+    const totalDays = (chartEnd.getTime() - chartStart.getTime()) / (1000 * 60 * 60 * 24);
+    const taskStartDays = (task.start.getTime() - chartStart.getTime()) / (1000 * 60 * 60 * 24);
+    const taskDurationDays = (task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24);
+
+    return {
+      left: `${(taskStartDays / totalDays) * 100}%`,
+      width: `${(taskDurationDays / totalDays) * 100}%`,
+    };
+  };
+
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
       <Box {...getStyles('table')}>
@@ -98,12 +125,14 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           <Text>2025</Text>
           <Select data={['hours', 'days', 'weeks', 'months']} />
         </Box>
-        <ScrollArea>
+        <ScrollArea {...getStyles('scrollArea')}>
           <Box {...getStyles('dates')}>1 2 3 4 5 6 7 8 9 10</Box>
           <Box {...getStyles('tasksView')}>
-            {data.map((d) => (
-              <Box {...getStyles('task')} key={d.id}>
-                {d.name}
+            {data.map((d, index) => (
+              <Box {...getStyles('taskLine')} key={d.id}>
+                <Box {...getStyles('task')} style={getTaskStyle(d, index)}>
+                  {d.name}
+                </Box>
               </Box>
             ))}
           </Box>

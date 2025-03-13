@@ -5,8 +5,10 @@
   /* font-weight: 500; */
   display: flex;
   flex-direction: row;
+  height: 100%;
+  /* min-height: 400px; */
   /* padding: 0; */
-  /* border: 1px solid red; */
+  border: 1px solid red;
 }
 
 .table {
@@ -17,6 +19,7 @@
 
 .tableCell {
   border: 1px solid purple;
+  height: 2.5rem;
 }
 
 .main {
@@ -38,6 +41,10 @@
   border: 1px solid blue;
 }
 
+.scrollArea {
+  height: 100%;
+}
+
 .dates {
   height: 2.5rem;
   border: 1px solid green;
@@ -46,8 +53,17 @@
 .tasksView {
   flex: 1;
   border: 1px solid yellow;
+  overflow-x: auto;
+}
+
+.taskLine {
+  height: 2.5rem;
+  position: relative;
+  border: 1px solid blue;
 }
 
 .task {
   border: 1px solid red;
+  position: absolute;
+  height: 100%;
 }
