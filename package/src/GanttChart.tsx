@@ -25,7 +25,9 @@ export type GanttChartStylesNames =
   | 'tableCell'
   | 'task'
   | 'taskLine'
-  | 'scrollArea';
+  | 'scrollArea'
+  | 'periodGrid'
+  | 'periodGridLine';
 
 export type GanttChartCssVariables = {};
 
@@ -95,34 +97,34 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     };
   };
 
-  // Get all days between start and end date
-  const getDays = () => {
+  // Get all periods between start and end date
+  const getPeriods = () => {
     const { start, end } = getDateRange();
-    const days = [];
+    const periods = [];
     const currentDate = new Date(start);
 
     while (currentDate <= end) {
-      days.push(new Date(currentDate));
+      periods.push(new Date(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    return days;
+    return periods;
   };
 
   // Calculate task position and width
   const getTaskStyle = (task: GanttChartData) => {
-    const days = getDays();
-    const startIndex = days.findIndex(
-      (day) =>
-        day.getDate() === task.start.getDate() &&
-        day.getMonth() === task.start.getMonth() &&
-        day.getFullYear() === task.start.getFullYear()
+    const periods = getPeriods();
+    const startIndex = periods.findIndex(
+      (period) =>
+        period.getDate() === task.start.getDate() &&
+        period.getMonth() === task.start.getMonth() &&
+        period.getFullYear() === task.start.getFullYear()
     );
-    const endIndex = days.findIndex(
-      (day) =>
-        day.getDate() === task.end.getDate() &&
-        day.getMonth() === task.end.getMonth() &&
-        day.getFullYear() === task.end.getFullYear()
+    const endIndex = periods.findIndex(
+      (period) =>
+        period.getDate() === task.end.getDate() &&
+        period.getMonth() === task.end.getMonth() &&
+        period.getFullYear() === task.end.getFullYear()
     );
 
     return {
@@ -150,13 +152,18 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         </Box>
         <ScrollArea {...getStyles('scrollArea')}>
           <Box {...getStyles('dates')}>
-            {getDays().map((day, index) => (
+            {getPeriods().map((period, index) => (
               <Box key={index} style={{ width: '2rem', display: 'inline-block' }}>
-                {day.getDate()}
+                {period.getDate()}
               </Box>
             ))}
           </Box>
           <Box {...getStyles('tasksView')}>
+            <Box {...getStyles('periodGrid')}>
+              {getPeriods().map((_, index) => (
+                <Box key={index} {...getStyles('periodGridLine')} />
+              ))}
+            </Box>
             {data.map((d) => (
               <Box {...getStyles('taskLine')} key={d.id}>
                 <Box {...getStyles('task')} style={getTaskStyle(d)}>

@@ -65,6 +65,22 @@
   overflow: hidden;
 }
 
+.periodGrid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.periodGridLine {
+  width: 2rem;
+  border-right: 1px solid var(--mantine-color-gray-3);
+  height: 100%;
+}
+
 .taskLine {
   height: 2.5rem;
   position: relative;
@@ -74,5 +90,6 @@
 .task {
   border: 1px solid red;
   position: absolute;
+  background-color: var(--mantine-color-gray-8);
   height: 100%;
 }
