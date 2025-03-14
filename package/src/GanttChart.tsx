@@ -1,20 +1,9 @@
-import { useState } from 'react';
+import { useState } from 'react'
 import {
-  Box,
-  BoxProps,
-  createVarsResolver,
-  ElementProps,
-  factory,
-  Factory,
-  MantineColor,
-  ScrollArea,
-  Select,
-  StylesApiProps,
-  Text,
-  useProps,
-  useStyles,
-} from '@mantine/core';
-import classes from './GanttChart.module.css';
+    Box, BoxProps, createVarsResolver, ElementProps, factory, Factory, MantineColor, ScrollArea,
+    Select, StylesApiProps, Text, useProps, useStyles
+} from '@mantine/core'
+import classes from './GanttChart.module.css'
 
 export type PeriodScale =
   | 'hours' // 15 min periods
@@ -96,6 +85,12 @@ const SCALE_OPTIONS: { value: PeriodScale; label: string }[] = [
   { value: 'year', label: 'Year' },
   { value: '5-years', label: '5 Years' },
 ];
+
+// Add isWeekend helper function
+const isWeekend = (date: Date) => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+};
 
 export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const props = useProps('GanttChart', defaultProps, _props);
@@ -350,18 +345,24 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         <ScrollArea {...getStyles('scrollArea')}>
           <Box {...getStyles('dates')}>
             {getPeriods().map((period, index) => (
-              <Box {...getStyles('dateCell')} key={index} style={{ width: getPeriodWidth() }}>
+              <Box
+                {...getStyles('dateCell')}
+                key={index}
+                style={{ width: getPeriodWidth() }}
+                data-weekend={['week', 'bi-week', 'month'].includes(scale) && isWeekend(period)}
+              >
                 {formatPeriodLabel(period)}
               </Box>
             ))}
           </Box>
           <Box {...getStyles('tasksView')}>
             <Box {...getStyles('periodGrid')}>
-              {getPeriods().map((_, index) => (
+              {getPeriods().map((period, index) => (
                 <Box
                   key={index}
                   {...getStyles('periodGridLine')}
                   style={{ width: getPeriodWidth() }}
+                  data-weekend={['week', 'bi-week', 'month'].includes(scale) && isWeekend(period)}
                 />
               ))}
             </Box>
