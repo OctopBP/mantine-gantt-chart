@@ -1,7 +1,7 @@
 import { add, format, isSameDay, isSameHour, isSameMonth, isSameYear } from 'date-fns'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-    Box, BoxProps, createVarsResolver, ElementProps, factory, Factory, MantineColor, ScrollArea,
+    Box, BoxProps, Button, createVarsResolver, ElementProps, factory, Factory, Loader, MantineColor,
     Select, StylesApiProps, Text, useProps, useStyles
 } from '@mantine/core'
 import classes from './GanttChart.module.css'
@@ -101,13 +101,43 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   } = props;
 
   // Constants for chart configuration
-  const MIN_PERIODS = 30; // Minimum number of periods to display
-  const PERIODS_BEFORE = 3; // Number of periods to add before the start date
-  const BUFFER_SIZE = 20; // Extra items to render on each side
+  const TOTAL_PERIODS = 500; // Fixed total number of periods to maintain
+  const VISIBLE_BUFFER = 50; // Extra items to render on each side of visible area
+  const SCROLL_THRESHOLD = 0.2; // When to shift the window (20% from edge)
+  const PERIODS_TO_SHIFT = 100; // Number of periods to shift when reaching threshold
 
   const [scale, setInternalScale] = useState<PeriodScale>(externalScale || 'day');
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 50 });
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [scrollDirection, setScrollDirection] = useState<'left' | 'right' | null>(null);
+  const [isShifting, setIsShifting] = useState(false);
+  const [showScrollToTop, setShowScrollToTop] = useState(true);
+  const lastScrollLeft = useRef(0);
+  const isInitialRender = useRef(true);
+
+  // Fixed-size array of periods
+  const [allPeriods, setAllPeriods] = useState<Date[]>([]);
+
+  // Track absolute position in infinite timeline for date calculations
+  const virtualOffsetRef = useRef(0);
+
+  // Reference point - the "center" date for our infinite timeline
+  const [centerDate] = useState(() => {
+    // If we have data, use the middle of the data range as center
+    if (data.length > 0) {
+      const dates = data.flatMap((task) => [task.start, task.end]);
+      const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+      const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+      // Center between min and max
+      const centerTime = minDate.getTime() + (maxDate.getTime() - minDate.getTime()) / 2;
+      return new Date(centerTime);
+    }
+
+    // Otherwise use current date
+    return new Date();
+  });
 
   // Get current period config
   const periodConfig = PERIOD_CONFIGS[scale];
@@ -125,123 +155,289 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     varsResolver,
   });
 
-  // Calculate the date range for the chart with a minimum width
-  const dateRange = useMemo(() => {
-    if (data.length === 0) {
-      // If no data, show current date plus MIN_PERIODS periods
-      const start = new Date();
-      const end = add(new Date(), {
+  // Initialize the fixed-size window of periods when scale changes
+  useEffect(() => {
+    // Generate fixed number of periods centered around the centerDate
+    const periods: Date[] = [];
+
+    // Calculate half to put before and after center
+    const halfCount = Math.floor(TOTAL_PERIODS / 2);
+
+    // Generate periods before the center date
+    let tempDate = new Date(centerDate);
+    for (let i = 0; i < halfCount; i++) {
+      // Go backwards by subtracting the increment
+      tempDate = add(tempDate, {
         ...periodConfig.increment,
         ...{
-          [Object.keys(periodConfig.increment)[0]]:
-            MIN_PERIODS * Object.values(periodConfig.increment)[0],
+          [Object.keys(periodConfig.increment)[0]]: -Object.values(periodConfig.increment)[0],
         },
       });
-      return { start, end };
+      // Add to the beginning
+      periods.unshift(new Date(tempDate));
     }
 
-    // Get min and max dates from tasks
-    const dates = data.flatMap((task) => [task.start, task.end]);
-    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+    // Add the center date
+    periods.push(new Date(centerDate));
 
-    // Add PERIODS_BEFORE periods before the start date for padding
-    const paddedStart = add(minDate, {
-      ...periodConfig.increment,
-      ...{
-        [Object.keys(periodConfig.increment)[0]]:
-          -PERIODS_BEFORE * Object.values(periodConfig.increment)[0],
-      },
+    // Generate periods after the center date
+    tempDate = new Date(centerDate);
+    for (let i = 0; i < halfCount - 1; i++) {
+      tempDate = add(tempDate, periodConfig.increment);
+      periods.push(new Date(tempDate));
+    }
+
+    setAllPeriods(periods);
+    virtualOffsetRef.current = 0;
+
+    // Reset visible range to the center
+    const centerIndex = Math.floor(periods.length / 2);
+    setVisibleRange({
+      startIndex: Math.max(0, centerIndex - 25),
+      endIndex: centerIndex + 25,
     });
 
-    // Calculate how many periods the tasks span
-    let tempDate = new Date(paddedStart);
-    let periodCount = 0;
-
-    while (tempDate <= maxDate) {
-      periodCount++;
-      tempDate = add(tempDate, periodConfig.increment);
+    // If we have a container, scroll to the center
+    if (containerRef.current) {
+      // Wait for the next render cycle
+      setTimeout(() => {
+        if (containerRef.current) {
+          const periodWidthPx = periodConfig.width * 16; // convert rem to px
+          containerRef.current.scrollLeft =
+            centerIndex * periodWidthPx - containerRef.current.clientWidth / 2;
+        }
+      }, 0);
     }
 
-    // If tasks span fewer than MIN_PERIODS, extend the end date
-    if (periodCount < MIN_PERIODS) {
-      const periodsToAdd = MIN_PERIODS - periodCount;
-      const end = add(maxDate, {
-        ...periodConfig.increment,
-        ...{
-          [Object.keys(periodConfig.increment)[0]]:
-            periodsToAdd * Object.values(periodConfig.increment)[0],
-        },
-      });
-      return { start: paddedStart, end };
-    }
-
-    return { start: paddedStart, end: maxDate };
-  }, [data, periodConfig, MIN_PERIODS, PERIODS_BEFORE]);
+    isInitialRender.current = false;
+  }, [scale, centerDate, periodConfig, TOTAL_PERIODS]);
 
   // Get period width based on scale
   const getPeriodWidth = () => `${periodConfig.width}rem`;
 
-  // Get all periods between start and end date with pooling
-  const allPeriods = useMemo(() => {
-    const { start, end } = dateRange;
-    const periods: Date[] = [];
-
-    // Create a copy of the start date and round it to the nearest period boundary
-    let dateIterator = new Date(start);
-
-    // Iterate until we reach the end date
-    while (dateIterator <= end) {
-      // Only add if it's within our range
-      if (dateIterator >= start && dateIterator <= end) {
-        // Create a new date object to avoid reference issues
-        periods.push(new Date(dateIterator));
-      }
-
-      // Move to next period using the increment function from config
-      // Use the getIncrement function to get the appropriate increment based on pooling factor
-      dateIterator = add(dateIterator, periodConfig.increment);
-    }
-
-    return periods;
-  }, [dateRange, periodConfig]);
-
-  // Get only the visible periods with some buffer
+  // Get only the visible periods with buffer
   const visiblePeriods = useMemo(() => {
-    const start = Math.max(0, visibleRange.startIndex - BUFFER_SIZE);
-    const end = Math.min(allPeriods.length, visibleRange.endIndex + BUFFER_SIZE);
+    const start = Math.max(0, visibleRange.startIndex - VISIBLE_BUFFER);
+    const end = Math.min(allPeriods.length, visibleRange.endIndex + VISIBLE_BUFFER);
     return allPeriods.slice(start, end);
-  }, [allPeriods, visibleRange, BUFFER_SIZE]);
+  }, [allPeriods, visibleRange, VISIBLE_BUFFER]);
 
   // Calculate the offset for the visible periods
   const periodsOffset = useMemo(() => {
-    const start = Math.max(0, visibleRange.startIndex - BUFFER_SIZE);
+    const start = Math.max(0, visibleRange.startIndex - VISIBLE_BUFFER);
     return `${start * periodConfig.width}rem`;
-  }, [visibleRange, periodConfig.width, BUFFER_SIZE]);
+  }, [visibleRange, periodConfig.width, VISIBLE_BUFFER]);
+
+  // Shift window to the left (show earlier dates)
+  const shiftWindowLeft = useCallback(() => {
+    if (isShifting) {
+      return;
+    }
+    setIsShifting(true);
+
+    setAllPeriods((prevPeriods) => {
+      // Check if we have periods to work with
+      if (prevPeriods.length === 0) {
+        return prevPeriods;
+      }
+
+      // Create a copy of the current periods
+      const periodsArray = [...prevPeriods];
+
+      // Remove periods from the right end
+      periodsArray.splice(periodsArray.length - PERIODS_TO_SHIFT, PERIODS_TO_SHIFT);
+
+      // Generate new periods to add to the left
+      let tempDate = new Date(periodsArray[0]);
+      const newPeriods = [];
+
+      // Create PERIODS_TO_SHIFT new periods
+      for (let i = 0; i < PERIODS_TO_SHIFT; i++) {
+        // Go backwards by subtracting the increment
+        tempDate = add(tempDate, {
+          ...periodConfig.increment,
+          ...{
+            [Object.keys(periodConfig.increment)[0]]: -Object.values(periodConfig.increment)[0],
+          },
+        });
+        // Add to the array of new periods
+        newPeriods.unshift(new Date(tempDate));
+      }
+
+      // Combine new periods with existing array
+      const result = [...newPeriods, ...periodsArray];
+
+      // Update the virtual offset to track our position in the infinite timeline
+      virtualOffsetRef.current -= PERIODS_TO_SHIFT;
+
+      return result;
+    });
+
+    // We need to maintain the scroll position so it appears seamless
+    const oldScrollLeft = containerRef.current?.scrollLeft || 0;
+    const periodWidthPx = periodConfig.width * 16; // convert rem to px
+
+    // After the state update, adjust scroll position and visible range
+    setTimeout(() => {
+      if (containerRef.current) {
+        // Adjust scroll position to compensate for the added periods
+        containerRef.current.scrollLeft = oldScrollLeft + PERIODS_TO_SHIFT * periodWidthPx;
+
+        // Adjust visible range to account for the shifted window
+        setVisibleRange((prev) => ({
+          startIndex: prev.startIndex + PERIODS_TO_SHIFT,
+          endIndex: prev.endIndex + PERIODS_TO_SHIFT,
+        }));
+
+        setIsShifting(false);
+      }
+    }, 0);
+  }, [isShifting, periodConfig]);
+
+  // Shift window to the right (show later dates)
+  const shiftWindowRight = useCallback(() => {
+    if (isShifting) {
+      return;
+    }
+    setIsShifting(true);
+
+    setAllPeriods((prevPeriods) => {
+      // Check if we have periods to work with
+      if (prevPeriods.length === 0) {
+        return prevPeriods;
+      }
+
+      // Create a copy of the current periods
+      const periodsArray = [...prevPeriods];
+
+      // Remove periods from the left end
+      periodsArray.splice(0, PERIODS_TO_SHIFT);
+
+      // Generate new periods to add to the right
+      let tempDate = new Date(periodsArray[periodsArray.length - 1]);
+      const newPeriods = [];
+
+      // Create PERIODS_TO_SHIFT new periods
+      for (let i = 0; i < PERIODS_TO_SHIFT; i++) {
+        // Go forward by adding the increment
+        tempDate = add(tempDate, periodConfig.increment);
+        // Add to the array of new periods
+        newPeriods.push(new Date(tempDate));
+      }
+
+      // Combine existing array with new periods
+      const result = [...periodsArray, ...newPeriods];
+
+      // Update the virtual offset to track our position in the infinite timeline
+      virtualOffsetRef.current += PERIODS_TO_SHIFT;
+
+      return result;
+    });
+
+    // We need to maintain the scroll position so it appears seamless
+    const oldScrollLeft = containerRef.current?.scrollLeft || 0;
+    const periodWidthPx = periodConfig.width * 16; // convert rem to px
+
+    // After the state update, adjust scroll position and visible range
+    setTimeout(() => {
+      if (containerRef.current) {
+        // Adjust scroll position to compensate for the removed periods
+        containerRef.current.scrollLeft = oldScrollLeft - PERIODS_TO_SHIFT * periodWidthPx;
+
+        // Adjust visible range to account for the shifted window
+        setVisibleRange((prev) => ({
+          startIndex: prev.startIndex - PERIODS_TO_SHIFT,
+          endIndex: prev.endIndex - PERIODS_TO_SHIFT,
+        }));
+
+        setIsShifting(false);
+      }
+    }, 0);
+  }, [isShifting, periodConfig]);
 
   // Update visible range on scroll
-  const handleScroll = (scrollPosition: { x: number; y: number }) => {
-    if (!scrollAreaRef.current) {
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current || isShifting || isInitialRender.current) {
       return;
     }
 
+    // Reset scroll timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    const scrollLeft = containerRef.current.scrollLeft;
+    const containerWidth = containerRef.current.clientWidth;
     const periodWidthPx = periodConfig.width * 16; // convert rem to px
-    const startIndex = Math.floor(scrollPosition.x / periodWidthPx);
-    const containerWidth = scrollAreaRef.current.clientWidth;
+    const totalWidthPx = allPeriods.length * periodWidthPx;
+
+    // Determine scroll direction
+    if (scrollLeft > lastScrollLeft.current) {
+      setScrollDirection('right');
+    } else if (scrollLeft < lastScrollLeft.current) {
+      setScrollDirection('left');
+    }
+
+    // Update last scroll position
+    lastScrollLeft.current = scrollLeft;
+
+    // Show scroll-to-top button when scrolled horizontally
+    setShowScrollToTop(scrollLeft > 300);
+
+    // Calculate scroll thresholds
+    const leftThreshold = totalWidthPx * SCROLL_THRESHOLD;
+    const rightThreshold = totalWidthPx * (1 - SCROLL_THRESHOLD);
+
+    // Check if we need to shift the window
+    if (scrollLeft < leftThreshold) {
+      shiftWindowLeft();
+      return;
+    } else if (scrollLeft > rightThreshold - containerWidth) {
+      shiftWindowRight();
+      return;
+    }
+
+    // Set a timeout to debounce scroll updates
+    scrollTimeout.current = setTimeout(() => {
+      setScrollDirection(null);
+    }, 150);
+
+    // Update visible range based on scroll position
+    const startIndex = Math.floor(scrollLeft / periodWidthPx);
     const visiblePeriods = Math.ceil(containerWidth / periodWidthPx);
 
     setVisibleRange({
       startIndex,
       endIndex: startIndex + visiblePeriods,
     });
-  };
+  }, [
+    periodConfig.width,
+    allPeriods.length,
+    isShifting,
+    shiftWindowLeft,
+    shiftWindowRight,
+    SCROLL_THRESHOLD,
+  ]);
+
+  // Scroll to center
+  const scrollToCenter = useCallback(() => {
+    if (containerRef.current) {
+      const centerIndex = Math.floor(allPeriods.length / 2);
+      const periodWidthPx = periodConfig.width * 16; // convert rem to px
+
+      containerRef.current.scrollTo({
+        left: centerIndex * periodWidthPx - containerRef.current.clientWidth / 2,
+        behavior: 'smooth',
+      });
+    }
+  }, [allPeriods.length, periodConfig.width]);
 
   // Format period label using the config
   const formatPeriodLabel = (date: Date) => {
     return format(date, periodConfig.labelFormat);
   };
 
-  // Calculate task position and width with pooling
+  // Calculate task position and width
   const getTaskStyle = (task: GanttChartData) => {
     const periodWidth = periodConfig.width;
 
@@ -344,12 +540,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   // Update the total width for the container
   const totalWidth = useMemo(() => {
     return `${allPeriods.length * periodConfig.width}rem`;
-  }, [allPeriods, periodConfig.width]);
-
-  // Effect to update visible range when scale changes
-  useEffect(() => {
-    setVisibleRange({ startIndex: 0, endIndex: 50 });
-  }, [scale]);
+  }, [allPeriods.length, periodConfig.width]);
 
   // Update the function to calculate the position of today's line more accurately
   const getTodayPosition = useMemo(() => {
@@ -360,26 +551,24 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return null;
     }
 
-    const firstPeriod = allPeriods[0];
-    const lastPeriod = allPeriods[allPeriods.length - 1];
+    // Find closest period to today
+    const todayIndex = allPeriods.findIndex((period) => {
+      switch (scale) {
+        case 'hours':
+          return isSameHour(period, today) && isSameDay(period, today);
+        case 'day':
+          return isSameDay(period, today);
+        default:
+          return isSameDay(period, today);
+      }
+    });
 
-    // Check if today is outside the range of periods
-    if (today < firstPeriod || today > lastPeriod) {
+    if (todayIndex === -1) {
       return null;
     }
 
-    // Calculate the exact position using time proportion
-    const totalTimeRange = lastPeriod.getTime() - firstPeriod.getTime();
-    const todayOffset = today.getTime() - firstPeriod.getTime();
-
-    // Calculate the percentage through the time range
-    const percentage = totalTimeRange === 0 ? 0 : todayOffset / totalTimeRange;
-
-    // Calculate the position in rems based on the total width
-    const position = percentage * (allPeriods.length - 1) * periodConfig.width;
-
-    return `${position}rem`;
-  }, [allPeriods, periodConfig.width]);
+    return `${todayIndex * periodConfig.width}rem`;
+  }, [allPeriods, scale, periodConfig.width]);
 
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
@@ -395,7 +584,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
       <Box {...getStyles('main')}>
         <Box {...getStyles('controls')}>
-          <Text>{format(dateRange.start, periodConfig.headerFormat)}</Text>
+          <Text>
+            {allPeriods.length > 0 ? format(allPeriods[0], periodConfig.headerFormat) : ''}
+            {' - '}
+            {allPeriods.length > 0
+              ? format(allPeriods[allPeriods.length - 1], periodConfig.headerFormat)
+              : ''}
+          </Text>
           <Select
             variant="unstyled"
             data={SCALE_OPTIONS}
@@ -413,12 +608,33 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             }}
           />
         </Box>
-        <ScrollArea
+        <Box
           {...getStyles('scrollArea')}
-          ref={scrollAreaRef}
-          onScrollPositionChange={handleScroll}
+          ref={containerRef}
+          style={{
+            overflow: 'auto',
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+          }}
+          onScroll={handleScroll}
         >
           <div style={{ width: totalWidth, position: 'relative' }}>
+            {/* Loading indicator for left shifting */}
+            {isShifting && scrollDirection === 'left' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10,
+                }}
+              >
+                <Loader size="sm" />
+              </div>
+            )}
+
             <Box {...getStyles('dates')}>
               <div
                 style={{
@@ -471,8 +687,42 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                 ))}
               </div>
             </Box>
+
+            {/* Loading indicator for right shifting */}
+            {isShifting && scrollDirection === 'right' && (
+              <div
+                style={{
+                  position: 'absolute',
+                  right: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 10,
+                }}
+              >
+                <Loader size="sm" />
+              </div>
+            )}
           </div>
-        </ScrollArea>
+        </Box>
+
+        {/* Scroll to center button */}
+        {showScrollToTop && (
+          <Button
+            variant="filled"
+            radius="xl"
+            size="lg"
+            style={{
+              position: 'absolute',
+              bottom: '1rem',
+              right: '1rem',
+              zIndex: 10,
+            }}
+            onClick={scrollToCenter}
+            aria-label="Scroll to center"
+          >
+            Scroll to center
+          </Button>
+        )}
       </Box>
     </Box>
   );
