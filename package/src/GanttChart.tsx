@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
     Box, BoxProps, createVarsResolver, ElementProps, factory, Factory, MantineColor, ScrollArea,
     Select, StylesApiProps, Text, useProps, useStyles
@@ -90,6 +90,31 @@ const SCALE_OPTIONS: { value: PeriodScale; label: string }[] = [
 const isWeekend = (date: Date) => {
   const day = date.getDay();
   return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+};
+
+// Add formatHeaderDate function
+const formatHeaderDate = (date: Date, scale: PeriodScale) => {
+  const options: Intl.DateTimeFormatOptions = {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  };
+
+  switch (scale) {
+    case 'hours':
+    case 'day':
+      return date.toLocaleDateString('en-US', options);
+    case 'week':
+    case 'bi-week':
+    case 'month':
+    case 'quarter':
+    case 'year':
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    case '5-years':
+      return date.getFullYear().toString();
+    default:
+      return date.toLocaleDateString('en-US', options);
+  }
 };
 
 export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
@@ -325,7 +350,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
       <Box {...getStyles('main')}>
         <Box {...getStyles('controls')}>
-          <Text>2025</Text>
+          <Text>{formatHeaderDate(getDateRange().start, scale)}</Text>
           <Select
             variant="unstyled"
             data={SCALE_OPTIONS}
