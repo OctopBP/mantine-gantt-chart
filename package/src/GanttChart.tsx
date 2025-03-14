@@ -119,17 +119,52 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     varsResolver,
   });
 
-  // Calculate the date range for the chart
+  // Calculate the date range for the chart with a minimum width
   const dateRange = useMemo(() => {
     if (data.length === 0) {
-      return { start: new Date(), end: new Date() };
+      // If no data, show current date plus 30 periods
+      const start = new Date();
+      const end = add(new Date(), {
+        ...periodConfig.increment,
+        ...{
+          [Object.keys(periodConfig.increment)[0]]: 30 * Object.values(periodConfig.increment)[0],
+        },
+      });
+      return { start, end };
     }
+
+    // Get min and max dates from tasks
     const dates = data.flatMap((task) => [task.start, task.end]);
-    return {
-      start: new Date(Math.min(...dates.map((d) => d.getTime()))),
-      end: new Date(Math.max(...dates.map((d) => d.getTime()))),
-    };
-  }, [data]);
+    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+
+    // Ensure we have at least 30 periods visible
+    const minPeriods = 30;
+
+    // Create a temporary array of periods to calculate how many the tasks span
+    let tempDate = new Date(minDate);
+    let periodCount = 0;
+
+    while (tempDate <= maxDate) {
+      periodCount++;
+      tempDate = add(tempDate, periodConfig.increment);
+    }
+
+    // If tasks span fewer than minPeriods, extend the end date
+    if (periodCount < minPeriods) {
+      const periodsToAdd = minPeriods - periodCount;
+      const end = add(maxDate, {
+        ...periodConfig.increment,
+        ...{
+          [Object.keys(periodConfig.increment)[0]]:
+            periodsToAdd * Object.values(periodConfig.increment)[0],
+        },
+      });
+      return { start: minDate, end };
+    }
+
+    return { start: minDate, end: maxDate };
+  }, [data, periodConfig]);
 
   // Get period width based on scale
   const getPeriodWidth = () => `${periodConfig.width}rem`;
@@ -384,13 +419,15 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                   );
                 })}
               </Box>
-              {data.map((d) => (
-                <Box {...getStyles('taskLine')} key={d.id}>
-                  <Box {...getStyles('task')} style={getTaskStyle(d)}>
-                    {d.name}
+              <div style={{ width: totalWidth, position: 'relative', height: '100%' }}>
+                {data.map((d) => (
+                  <Box {...getStyles('taskLine')} key={d.id}>
+                    <Box {...getStyles('task')} style={getTaskStyle(d)}>
+                      {d.name}
+                    </Box>
                   </Box>
-                </Box>
-              ))}
+                ))}
+              </div>
             </Box>
           </div>
         </ScrollArea>
