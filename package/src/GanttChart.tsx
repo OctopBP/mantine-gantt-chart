@@ -351,29 +351,75 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     setVisibleRange({ startIndex: 0, endIndex: 50 });
   }, [scale]);
 
-  // Inside the GanttChart component, update the function to calculate the position of today's line
+  // Update the function to calculate the position of today's line more accurately
   const getTodayPosition = useMemo(() => {
     const today = new Date();
 
-    // Find the exact position by calculating the time difference from the start date
-    const rangeStartTime = dateRange.start.getTime();
-    const todayTime = today.getTime();
-    const rangeEndTime = dateRange.end.getTime();
-
-    // If today is outside our date range, don't show the line
-    if (todayTime < rangeStartTime || todayTime > rangeEndTime) {
+    // If there are no periods, don't show the line
+    if (allPeriods.length === 0) {
       return null;
     }
 
-    // Calculate the exact position based on time difference
-    const totalTimeRange = rangeEndTime - rangeStartTime;
-    const todayOffset = todayTime - rangeStartTime;
-    const positionPercentage = todayOffset / totalTimeRange;
+    const firstPeriod = allPeriods[0];
+    const lastPeriod = allPeriods[allPeriods.length - 1];
 
-    // Calculate the position in rems based on the total width
-    const totalWidthRem = allPeriods.length * periodConfig.width;
-    return `${positionPercentage * totalWidthRem}rem`;
-  }, [dateRange, allPeriods, periodConfig.width]);
+    // Check if today is outside the range of periods
+    if (today < firstPeriod || today > lastPeriod) {
+      return null;
+    }
+
+    // Find the exact position for today
+    let beforePeriodIndex = -1;
+    let afterPeriodIndex = -1;
+
+    // Find the surrounding periods for today
+    for (let i = 0; i < allPeriods.length - 1; i++) {
+      const currentPeriod = allPeriods[i];
+      const nextPeriod = allPeriods[i + 1];
+
+      if (today >= currentPeriod && today < nextPeriod) {
+        beforePeriodIndex = i;
+        afterPeriodIndex = i + 1;
+        break;
+      }
+    }
+
+    // Handle edge cases
+    if (beforePeriodIndex === -1) {
+      // If today is at or after the last period
+      if (today >= lastPeriod) {
+        return `${(allPeriods.length - 1) * periodConfig.width}rem`;
+      }
+
+      // If today is before the first period
+      if (today < firstPeriod) {
+        return `0rem`;
+      }
+    } else {
+      // Interpolate between the periods
+      const beforePeriod = allPeriods[beforePeriodIndex];
+      const afterPeriod = allPeriods[afterPeriodIndex];
+
+      const totalTime = afterPeriod.getTime() - beforePeriod.getTime();
+      const todayOffset = today.getTime() - beforePeriod.getTime();
+
+      // Ensure we don't divide by zero
+      if (totalTime === 0) {
+        return `${beforePeriodIndex * periodConfig.width}rem`;
+      }
+
+      const fraction = todayOffset / totalTime;
+      return `${(beforePeriodIndex + fraction) * periodConfig.width}rem`;
+    }
+
+    // Fallback to an approximate position based on time proportion
+    const totalTimeRange = lastPeriod.getTime() - firstPeriod.getTime();
+    const todayOffset = today.getTime() - firstPeriod.getTime();
+    const percentage = totalTimeRange === 0 ? 0 : todayOffset / totalTimeRange;
+    const position = percentage * (allPeriods.length - 1) * periodConfig.width;
+
+    return `${position}rem`;
+  }, [allPeriods, periodConfig.width]);
 
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
@@ -452,6 +498,9 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                   );
                 })}
               </Box>
+              {getTodayPosition && (
+                <Box {...getStyles('todayLine')} style={{ left: getTodayPosition }} title="Today" />
+              )}
               <div style={{ width: totalWidth, position: 'relative', height: '100%' }}>
                 {data.map((d) => (
                   <Box {...getStyles('taskLine')} key={d.id}>
@@ -461,9 +510,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                   </Box>
                 ))}
               </div>
-              {getTodayPosition && (
-                <Box {...getStyles('todayLine')} style={{ left: getTodayPosition }} title="Today" />
-              )}
             </Box>
           </div>
         </ScrollArea>
