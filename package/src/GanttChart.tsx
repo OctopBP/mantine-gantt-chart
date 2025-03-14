@@ -368,54 +368,14 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return null;
     }
 
-    // Find the exact position for today
-    let beforePeriodIndex = -1;
-    let afterPeriodIndex = -1;
-
-    // Find the surrounding periods for today
-    for (let i = 0; i < allPeriods.length - 1; i++) {
-      const currentPeriod = allPeriods[i];
-      const nextPeriod = allPeriods[i + 1];
-
-      if (today >= currentPeriod && today < nextPeriod) {
-        beforePeriodIndex = i;
-        afterPeriodIndex = i + 1;
-        break;
-      }
-    }
-
-    // Handle edge cases
-    if (beforePeriodIndex === -1) {
-      // If today is at or after the last period
-      if (today >= lastPeriod) {
-        return `${(allPeriods.length - 1) * periodConfig.width}rem`;
-      }
-
-      // If today is before the first period
-      if (today < firstPeriod) {
-        return `0rem`;
-      }
-    } else {
-      // Interpolate between the periods
-      const beforePeriod = allPeriods[beforePeriodIndex];
-      const afterPeriod = allPeriods[afterPeriodIndex];
-
-      const totalTime = afterPeriod.getTime() - beforePeriod.getTime();
-      const todayOffset = today.getTime() - beforePeriod.getTime();
-
-      // Ensure we don't divide by zero
-      if (totalTime === 0) {
-        return `${beforePeriodIndex * periodConfig.width}rem`;
-      }
-
-      const fraction = todayOffset / totalTime;
-      return `${(beforePeriodIndex + fraction) * periodConfig.width}rem`;
-    }
-
-    // Fallback to an approximate position based on time proportion
+    // Calculate the exact position using time proportion
     const totalTimeRange = lastPeriod.getTime() - firstPeriod.getTime();
     const todayOffset = today.getTime() - firstPeriod.getTime();
+
+    // Calculate the percentage through the time range
     const percentage = totalTimeRange === 0 ? 0 : todayOffset / totalTimeRange;
+
+    // Calculate the position in rems based on the total width
     const position = percentage * (allPeriods.length - 1) * periodConfig.width;
 
     return `${position}rem`;
