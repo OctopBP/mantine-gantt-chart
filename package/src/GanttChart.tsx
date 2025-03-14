@@ -137,76 +137,29 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   // Get numeric value of period width
   const getPeriodWidthValue = () => periodConfig.width;
 
-  // Calculate pooling factor based on scale and available width
-  const getPoolingFactor = useMemo(() => {
-    // For hours scale, we want to show every 15 minutes without pooling
-    if (scale === 'hours' || scale === 'day') {
-      return 1; // No pooling for hours scale
-    }
-
-    // Calculate total periods based on date range
-    const { start, end } = dateRange;
-    const totalPeriods = Math.ceil((end.getTime() - start.getTime()) / periodConfig.timeUnit);
-
-    // Target a reasonable number of visible periods
-    const targetVisiblePeriods = 50;
-
-    // If we have more periods than what we want to show, calculate pooling factor
-    if (totalPeriods > targetVisiblePeriods) {
-      // Calculate pooling factor to achieve target number of periods
-      const idealPoolingFactor = Math.ceil(totalPeriods / targetVisiblePeriods);
-
-      // Apply scale-specific rounding and minimum
-      const roundedFactor = Math.max(
-        periodConfig.minPoolingFactor,
-        Math.round(idealPoolingFactor / periodConfig.targetPoolingFactor) *
-          periodConfig.targetPoolingFactor
-      );
-
-      return roundedFactor;
-    }
-
-    // If we have fewer periods than target, no pooling needed
-    return 1;
-  }, [dateRange, periodConfig, scale]);
-
   // Get all periods between start and end date with pooling
   const allPeriods = useMemo(() => {
     const { start, end } = dateRange;
-    const periods = [];
-    const poolingFactor = getPoolingFactor;
+    const periods: Date[] = [];
 
-    // Create a copy of the start date
+    // Create a copy of the start date and round it to the nearest period boundary
     let dateIterator = new Date(start);
-    let counter = 0;
-
-    // For hours and day scales, ensure we have proper intervals
-    if (scale === 'hours') {
-      // Round to the nearest 15 minutes and ensure seconds and milliseconds are 0
-      const minutes = dateIterator.getMinutes();
-      const roundedMinutes = Math.floor(minutes / 15) * 15;
-      dateIterator.setMinutes(roundedMinutes, 0, 0);
-    } else if (scale === 'day') {
-      // Round to the nearest hour
-      dateIterator.setMinutes(0, 0, 0);
-    }
 
     // Iterate until we reach the end date
     while (dateIterator <= end) {
-      // Only add if it's within our range and matches pooling factor
-      if (dateIterator >= start && dateIterator <= end && counter % poolingFactor === 0) {
+      // Only add if it's within our range
+      if (dateIterator >= start && dateIterator <= end) {
         // Create a new date object to avoid reference issues
         periods.push(new Date(dateIterator));
       }
 
-      counter++;
-
       // Move to next period using the increment function from config
+      // Use the getIncrement function to get the appropriate increment based on pooling factor
       dateIterator = add(dateIterator, periodConfig.increment);
     }
 
     return periods;
-  }, [dateRange, scale, periodConfig, getPoolingFactor]);
+  }, [dateRange, periodConfig]);
 
   // Get only the visible periods with some buffer
   const visiblePeriods = useMemo(() => {
@@ -373,6 +326,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             variant="unstyled"
             data={SCALE_OPTIONS}
             value={scale}
+            w="6.5rem"
             onChange={(value) => {
               if (value) {
                 const newScale = value as PeriodScale;
