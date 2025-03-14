@@ -1,5 +1,6 @@
-import { render, screen, tests } from '@mantine-tests/core'
-import { GanttChart, GanttChartProps, GanttChartStylesNames } from './GanttChart'
+import React from 'react';
+import { render, screen, tests } from '@mantine-tests/core';
+import { GanttChart, GanttChartProps, GanttChartStylesNames } from './GanttChart';
 
 const defaultProps: GanttChartProps = {
   data: [

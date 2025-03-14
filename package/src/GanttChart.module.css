@@ -68,11 +68,16 @@
   justify-content: center;
 }
 
-.dateCell[data-weekend='true'] {
+/* Mark type styles for date cells */
+.dateCell[data-mark-type='weekend'] {
   color: var(--mantine-color-red-filled);
 }
 
-[data-mantine-color-scheme='dark'] .dateCell[data-weekend='true'] {
+.dateCell[data-mark-type='major'] {
+  color: var(--mantine-color-dark-2);
+}
+
+[data-mantine-color-scheme='dark'] .dateCell[data-mark-type='weekend'] {
   color: var(--mantine-color-red-4);
 }
 
@@ -94,16 +99,30 @@
 
 .periodGridLine {
   width: 2rem;
+  border-left: 1px solid var(--mantine-color-dark-5);
   border-right: 1px solid var(--mantine-color-dark-5);
   height: 100%;
   transition: background-color 0.2s ease;
 }
 
-.periodGridLine[data-weekend='true'] {
+/* Mark type styles for grid lines */
+.periodGridLine[data-mark-type='weekend'] {
   background-color: var(--mantine-color-dark-4);
 }
 
-[data-mantine-color-scheme='dark'] .periodGridLine[data-weekend='true'] {
+.periodGridLine[data-mark-type='major'] {
+  border-left: 1px solid var(--mantine-color-dark-3);
+}
+
+.periodGridLine[data-mark-type='minor'] {
+  border-left: 1px solid var(--mantine-color-dark-5);
+}
+
+.periodGridLine[data-mark-type='none'] {
+  border-left: 1px dashed var(--mantine-color-dark-6);
+}
+
+[data-mantine-color-scheme='dark'] .periodGridLine[data-mark-type='weekend'] {
   background-color: var(--mantine-color-dark-6);
   border-right-color: var(--mantine-color-dark-4);
 }
@@ -136,4 +155,9 @@
   background-color: var(--mantine-color-dark-4);
   transform: translateY(-1px);
   box-shadow: var(--mantine-shadow-sm);
+}
+
+.headerDate {
+  font-weight: 500;
+  margin-right: 1rem;
 }

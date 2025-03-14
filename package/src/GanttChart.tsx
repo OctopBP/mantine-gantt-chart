@@ -1,19 +1,11 @@
+import { add, format, isSameDay, isSameHour, isSameMonth, isSameYear } from 'date-fns'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
     Box, BoxProps, createVarsResolver, ElementProps, factory, Factory, MantineColor, ScrollArea,
     Select, StylesApiProps, Text, useProps, useStyles
 } from '@mantine/core'
 import classes from './GanttChart.module.css'
-
-export type PeriodScale =
-  | 'hours' // 15 min periods
-  | 'day' // 1 hour periods
-  | 'week' // 1 day periods (wide)
-  | 'bi-week' // 1 day periods (medium)
-  | 'month' // 1 day periods (short)
-  | 'quarter' // 1 week periods (wide)
-  | 'year' // 1 week periods (short)
-  | '5-years'; // 1 month periods
+import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig'
 
 export type GanttChartStylesNames =
   | 'root'
@@ -28,7 +20,12 @@ export type GanttChartStylesNames =
   | 'taskLine'
   | 'scrollArea'
   | 'periodGrid'
-  | 'periodGridLine';
+  | 'periodGridLine'
+  | 'headerDate'
+  | 'markMajor'
+  | 'markMinor'
+  | 'markWeekend'
+  | 'markNone';
 
 export type GanttChartCssVariables = {};
 
@@ -75,7 +72,7 @@ const varsResolver = createVarsResolver<GanttChartFactory>(() => ({
   root: {},
 }));
 
-const SCALE_OPTIONS: { value: PeriodScale; label: string }[] = [
+const SCALE_OPTIONS = [
   { value: 'hours', label: 'Hours' },
   { value: 'day', label: 'Day' },
   { value: 'week', label: 'Week' },
@@ -85,37 +82,6 @@ const SCALE_OPTIONS: { value: PeriodScale; label: string }[] = [
   { value: 'year', label: 'Year' },
   { value: '5-years', label: '5 Years' },
 ];
-
-// Add isWeekend helper function
-const isWeekend = (date: Date) => {
-  const day = date.getDay();
-  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
-};
-
-// Add formatHeaderDate function
-const formatHeaderDate = (date: Date, scale: PeriodScale) => {
-  const options: Intl.DateTimeFormatOptions = {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  };
-
-  switch (scale) {
-    case 'hours':
-    case 'day':
-      return date.toLocaleDateString('en-US', options);
-    case 'week':
-    case 'bi-week':
-    case 'month':
-    case 'quarter':
-    case 'year':
-      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    case '5-years':
-      return date.getFullYear().toString();
-    default:
-      return date.toLocaleDateString('en-US', options);
-  }
-};
 
 export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const props = useProps('GanttChart', defaultProps, _props);
@@ -136,6 +102,9 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const [scale, setInternalScale] = useState<PeriodScale>(externalScale || 'day');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 50 });
+
+  // Get current period config
+  const periodConfig = PERIOD_CONFIGS[scale];
 
   const getStyles = useStyles<GanttChartFactory>({
     name: 'GanttChart',
@@ -163,178 +132,81 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   }, [data]);
 
   // Get period width based on scale
-  const getPeriodWidth = () => {
-    switch (scale) {
-      case 'hours':
-        return '6rem'; // 15 min = 6rem to accommodate "10:15 AM" format
-      case 'day':
-        return '3rem'; // 1 hour = 3rem
-      case 'week':
-        return '7rem'; // 1 day = 7rem
-      case 'bi-week':
-        return '3.5rem'; // 1 day = 3.5rem
-      case 'month':
-        return '1.75rem'; // 1 day = 1.75rem
-      case 'quarter':
-        return '4.5rem'; // 1 week = 4.5rem
-      case 'year':
-        return '1.25rem'; // 1 week = 1.25rem
-      case '5-years':
-        return '1rem'; // 1 month = 1rem
-      default:
-        return '1rem';
-    }
-  };
+  const getPeriodWidth = () => `${periodConfig.width}rem`;
+
+  // Get numeric value of period width
+  const getPeriodWidthValue = () => periodConfig.width;
 
   // Calculate pooling factor based on scale and available width
-  const getPoolingFactor = () => {
-    // Calculate total periods based on date range
-    const { start, end } = dateRange;
-    let totalPeriods = 0;
-
-    switch (scale) {
-      case 'hours':
-        // Calculate 15-minute periods between dates
-        totalPeriods = Math.ceil((end.getTime() - start.getTime()) / (15 * 60 * 1000));
-        break;
-      case 'day':
-        // Calculate hourly periods
-        totalPeriods = Math.ceil((end.getTime() - start.getTime()) / (60 * 60 * 1000));
-        break;
-      case 'week':
-      case 'bi-week':
-      case 'month':
-        // Calculate daily periods
-        totalPeriods = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
-        break;
-      case 'quarter':
-      case 'year':
-        // Calculate weekly periods
-        totalPeriods = Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        break;
-      case '5-years':
-        // Calculate monthly periods (approximation)
-        totalPeriods =
-          (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-        break;
-      default:
-        totalPeriods = Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+  const getPoolingFactor = useMemo(() => {
+    // For hours scale, we want to show every 15 minutes without pooling
+    if (scale === 'hours' || scale === 'day') {
+      return 1; // No pooling for hours scale
     }
 
+    // Calculate total periods based on date range
+    const { start, end } = dateRange;
+    const totalPeriods = Math.ceil((end.getTime() - start.getTime()) / periodConfig.timeUnit);
+
     // Target a reasonable number of visible periods
-    const targetVisiblePeriods = 75;
+    const targetVisiblePeriods = 50;
 
     // If we have more periods than what we want to show, calculate pooling factor
     if (totalPeriods > targetVisiblePeriods) {
       // Calculate pooling factor to achieve target number of periods
       const idealPoolingFactor = Math.ceil(totalPeriods / targetVisiblePeriods);
 
-      // For certain scales, we might want to round to meaningful units
-      switch (scale) {
-        case 'hours':
-          // Round to nearest hour (4 periods of 15 min)
-          return Math.max(1, Math.round(idealPoolingFactor / 4) * 4);
-        case 'day':
-          // Round to nearest 6 hours
-          return Math.max(1, Math.round(idealPoolingFactor / 6) * 6);
-        case 'week':
-        case 'bi-week':
-        case 'month':
-          // Round to nearest day
-          return Math.max(1, Math.round(idealPoolingFactor));
-        case 'quarter':
-        case 'year':
-          // Round to nearest week
-          return Math.max(1, Math.round(idealPoolingFactor / 7) * 7);
-        case '5-years':
-          // Round to nearest quarter (3 months)
-          return Math.max(1, Math.round(idealPoolingFactor / 3) * 3);
-        default:
-          return Math.max(1, Math.round(idealPoolingFactor));
-      }
+      // Apply scale-specific rounding and minimum
+      const roundedFactor = Math.max(
+        periodConfig.minPoolingFactor,
+        Math.round(idealPoolingFactor / periodConfig.targetPoolingFactor) *
+          periodConfig.targetPoolingFactor
+      );
+
+      return roundedFactor;
     }
 
     // If we have fewer periods than target, no pooling needed
     return 1;
-  };
+  }, [dateRange, periodConfig, scale]);
 
   // Get all periods between start and end date with pooling
   const allPeriods = useMemo(() => {
     const { start, end } = dateRange;
     const periods = [];
-    const currentDate = new Date(start);
-    const poolingFactor = getPoolingFactor();
+    const poolingFactor = getPoolingFactor;
 
-    // For hours scale, ensure we have 15-minute intervals
+    // Create a copy of the start date
+    let dateIterator = new Date(start);
+    let counter = 0;
+
+    // For hours and day scales, ensure we have proper intervals
     if (scale === 'hours') {
-      // Create a copy of the start date and round to the nearest 15 minutes
-      const dateIterator = new Date(start);
-      dateIterator.setMinutes(Math.floor(dateIterator.getMinutes() / 15) * 15, 0, 0);
-
-      // Iterate until we reach the end date
-      while (dateIterator <= end) {
-        // Only add if it's within our range
-        if (dateIterator >= start && dateIterator <= end) {
-          periods.push(new Date(dateIterator));
-        }
-
-        // Move to next 15-minute interval
-        dateIterator.setMinutes(dateIterator.getMinutes() + 15);
-      }
-
-      return periods;
-    }
-
-    // For day scale, ensure we have 1-hour intervals
-    if (scale === 'day') {
-      // Create a copy of the start date and round to the nearest hour
-      const dateIterator = new Date(start);
+      // Round to the nearest 15 minutes and ensure seconds and milliseconds are 0
+      const minutes = dateIterator.getMinutes();
+      const roundedMinutes = Math.floor(minutes / 15) * 15;
+      dateIterator.setMinutes(roundedMinutes, 0, 0);
+    } else if (scale === 'day') {
+      // Round to the nearest hour
       dateIterator.setMinutes(0, 0, 0);
-
-      // Iterate until we reach the end date
-      while (dateIterator <= end) {
-        // Only add if it's within our range
-        if (dateIterator >= start && dateIterator <= end) {
-          periods.push(new Date(dateIterator));
-        }
-
-        // Move to next hour
-        dateIterator.setHours(dateIterator.getHours() + 1);
-      }
-
-      return periods;
     }
 
-    // For other scales, use the original pooling logic
-    let poolCounter = 0;
-    while (currentDate <= end) {
-      if (poolCounter % poolingFactor === 0) {
-        periods.push(new Date(currentDate));
+    // Iterate until we reach the end date
+    while (dateIterator <= end) {
+      // Only add if it's within our range and matches pooling factor
+      if (dateIterator >= start && dateIterator <= end && counter % poolingFactor === 0) {
+        // Create a new date object to avoid reference issues
+        periods.push(new Date(dateIterator));
       }
 
-      poolCounter++;
+      counter++;
 
-      // Increment date based on scale
-      switch (scale) {
-        case 'week':
-        case 'bi-week':
-        case 'month':
-          currentDate.setDate(currentDate.getDate() + 1);
-          break;
-        case 'quarter':
-        case 'year':
-          currentDate.setDate(currentDate.getDate() + 7);
-          break;
-        case '5-years':
-          currentDate.setMonth(currentDate.getMonth() + 1);
-          break;
-        default:
-          currentDate.setDate(currentDate.getDate() + 1);
-      }
+      // Move to next period using the increment function from config
+      dateIterator = add(dateIterator, periodConfig.increment);
     }
 
     return periods;
-  }, [dateRange, scale]);
+  }, [dateRange, scale, periodConfig, getPoolingFactor]);
 
   // Get only the visible periods with some buffer
   const visiblePeriods = useMemo(() => {
@@ -347,8 +219,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   // Calculate the offset for the visible periods
   const periodsOffset = useMemo(() => {
     const start = Math.max(0, visibleRange.startIndex - 20);
-    return `${start * parseFloat(getPeriodWidth())}rem`;
-  }, [visibleRange, getPeriodWidth]);
+    return `${start * getPeriodWidthValue()}rem`;
+  }, [visibleRange, getPeriodWidthValue]);
 
   // Update visible range on scroll
   const handleScroll = (scrollPosition: { x: number; y: number }) => {
@@ -356,7 +228,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return;
     }
 
-    const periodWidthPx = parseFloat(getPeriodWidth()) * 16; // convert rem to px
+    const periodWidthPx = getPeriodWidthValue() * 16; // convert rem to px
     const startIndex = Math.floor(scrollPosition.x / periodWidthPx);
     const containerWidth = scrollAreaRef.current.clientWidth;
     const visiblePeriods = Math.ceil(containerWidth / periodWidthPx);
@@ -367,152 +239,95 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     });
   };
 
-  // Format period label based on scale and pooling
+  // Format period label using the config
   const formatPeriodLabel = (date: Date) => {
-    const poolingFactor = getPoolingFactor();
-    // Declare variables outside of switch
-    const hours = date.getHours();
-    const minutes = date.getMinutes();
-    const hour12 = hours % 12 || 12;
-    const ampm = hours < 12 ? 'AM' : 'PM';
-
-    switch (scale) {
-      case 'hours':
-        // For 15-minute intervals, always show hour:minute in 12-hour format with AM/PM
-        if (minutes === 0) {
-          // At the hour marks, show full format (e.g., "10:00 AM")
-          return `${hour12}:00 ${ampm}`;
-        }
-        // For 15, 30, 45 minute marks, show with minutes (e.g., "10:15 AM")
-        return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-
-      case 'day':
-        // For 1-hour intervals, always show hour with AM/PM
-        return `${hour12} ${ampm}`;
-
-      case 'week':
-      case 'bi-week':
-      case 'month':
-        if (poolingFactor >= 7) {
-          // If pooling by week, show week number
-          return `W${Math.ceil(date.getDate() / 7)}`;
-        }
-        return date.getDate().toString();
-
-      case 'quarter':
-      case 'year':
-        if (poolingFactor >= 28) {
-          // If pooling by month, show month
-          return date.toLocaleString('default', { month: 'short' });
-        }
-        return `W${Math.ceil(date.getDate() / 7)}`;
-
-      case '5-years':
-        if (poolingFactor >= 12) {
-          // If pooling by year, show year
-          return date.getFullYear().toString();
-        }
-        return date.toLocaleString('default', { month: 'short' });
-
-      default:
-        return date.getDate().toString();
-    }
+    return format(date, periodConfig.labelFormat);
   };
 
   // Calculate task position and width with pooling
   const getTaskStyle = (task: GanttChartData) => {
-    const periodWidth = parseFloat(getPeriodWidth());
+    const periodWidth = getPeriodWidthValue();
 
     // Find the index of the period that contains the task start date
     const startIndex = allPeriods.findIndex((period) => {
       switch (scale) {
         case 'hours':
+          // For hours scale, compare year, month, day, hour, and 15-minute interval
           return (
-            period.getFullYear() === task.start.getFullYear() &&
-            period.getMonth() === task.start.getMonth() &&
-            period.getDate() === task.start.getDate() &&
-            period.getHours() === task.start.getHours() &&
+            isSameYear(period, task.start) &&
+            isSameMonth(period, task.start) &&
+            isSameDay(period, task.start) &&
+            isSameHour(period, task.start) &&
             Math.floor(period.getMinutes() / 15) === Math.floor(task.start.getMinutes() / 15)
           );
         case 'day':
+          // For day scale, compare year, month, day, and hour
           return (
-            period.getFullYear() === task.start.getFullYear() &&
-            period.getMonth() === task.start.getMonth() &&
-            period.getDate() === task.start.getDate() &&
-            period.getHours() === task.start.getHours()
+            isSameYear(period, task.start) &&
+            isSameMonth(period, task.start) &&
+            isSameDay(period, task.start) &&
+            isSameHour(period, task.start)
           );
         case 'week':
         case 'bi-week':
         case 'month':
-          return (
-            period.getDate() === task.start.getDate() &&
-            period.getMonth() === task.start.getMonth() &&
-            period.getFullYear() === task.start.getFullYear()
-          );
+          // For week, bi-week, and month scales, compare year, month, and day
+          return isSameDay(period, task.start);
         case 'quarter':
         case 'year':
+          // For quarter and year scales, compare year, month, and week
           return (
-            Math.floor(period.getDate() / 7) === Math.floor(task.start.getDate() / 7) &&
-            period.getMonth() === task.start.getMonth() &&
-            period.getFullYear() === task.start.getFullYear()
+            isSameYear(period, task.start) &&
+            isSameMonth(period, task.start) &&
+            Math.floor(period.getDate() / 7) === Math.floor(task.start.getDate() / 7)
           );
         case '5-years':
-          return (
-            period.getMonth() === task.start.getMonth() &&
-            period.getFullYear() === task.start.getFullYear()
-          );
+          // For 5-years scale, compare year and month
+          return isSameMonth(period, task.start) && isSameYear(period, task.start);
         default:
-          return (
-            period.getDate() === task.start.getDate() &&
-            period.getMonth() === task.start.getMonth() &&
-            period.getFullYear() === task.start.getFullYear()
-          );
+          // Default case, compare year, month, and day
+          return isSameDay(period, task.start);
       }
     });
 
     const endIndex = allPeriods.findIndex((period) => {
       switch (scale) {
         case 'hours':
+          // For hours scale, compare year, month, day, hour, and 15-minute interval
           return (
-            period.getFullYear() === task.end.getFullYear() &&
-            period.getMonth() === task.end.getMonth() &&
-            period.getDate() === task.end.getDate() &&
-            period.getHours() === task.end.getHours() &&
+            isSameYear(period, task.end) &&
+            isSameMonth(period, task.end) &&
+            isSameDay(period, task.end) &&
+            isSameHour(period, task.end) &&
             Math.floor(period.getMinutes() / 15) === Math.floor(task.end.getMinutes() / 15)
           );
         case 'day':
+          // For day scale, compare year, month, day, and hour
           return (
-            period.getFullYear() === task.end.getFullYear() &&
-            period.getMonth() === task.end.getMonth() &&
-            period.getDate() === task.end.getDate() &&
-            period.getHours() === task.end.getHours()
+            isSameYear(period, task.end) &&
+            isSameMonth(period, task.end) &&
+            isSameDay(period, task.end) &&
+            isSameHour(period, task.end)
           );
         case 'week':
         case 'bi-week':
         case 'month':
-          return (
-            period.getDate() === task.end.getDate() &&
-            period.getMonth() === task.end.getMonth() &&
-            period.getFullYear() === task.end.getFullYear()
-          );
+          // For week, bi-week, and month scales, compare year, month, and day
+          return isSameDay(period, task.end);
         case 'quarter':
         case 'year':
+          // For quarter and year scales, compare year, month, and week
           return (
-            Math.floor(period.getDate() / 7) === Math.floor(task.end.getDate() / 7) &&
-            period.getMonth() === task.end.getMonth() &&
-            period.getFullYear() === task.end.getFullYear()
+            isSameYear(period, task.end) &&
+            isSameMonth(period, task.end) &&
+            Math.floor(period.getDate() / 7) === Math.floor(task.end.getDate() / 7)
           );
         case '5-years':
-          return (
-            period.getMonth() === task.end.getMonth() &&
-            period.getFullYear() === task.end.getFullYear()
-          );
+          // For 5-years scale, compare year and month
+          return isSameMonth(period, task.end) && isSameYear(period, task.end);
         default:
-          return (
-            period.getDate() === task.end.getDate() &&
-            period.getMonth() === task.end.getMonth() &&
-            period.getFullYear() === task.end.getFullYear()
-          );
+          // Default case, compare year, month, and day
+          return isSameDay(period, task.end);
       }
     });
 
@@ -531,8 +346,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Update the total width for the container
   const totalWidth = useMemo(() => {
-    return `${allPeriods.length * parseFloat(getPeriodWidth())}rem`;
-  }, [allPeriods, getPeriodWidth]);
+    return `${allPeriods.length * getPeriodWidthValue()}rem`;
+  }, [allPeriods, getPeriodWidthValue]);
 
   // Effect to update visible range when scale changes
   useEffect(() => {
@@ -553,7 +368,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
       <Box {...getStyles('main')}>
         <Box {...getStyles('controls')}>
-          <Text>{formatHeaderDate(dateRange.start, scale)}</Text>
+          <Text>{format(dateRange.start, periodConfig.headerFormat)}</Text>
           <Select
             variant="unstyled"
             data={SCALE_OPTIONS}
@@ -584,38 +399,36 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                   display: 'flex',
                 }}
               >
-                {visiblePeriods.map((period, index) => (
-                  <Box
-                    {...getStyles('dateCell')}
-                    key={index}
-                    style={{ width: getPeriodWidth() }}
-                    data-weekend={['week', 'bi-week', 'month'].includes(scale) && isWeekend(period)}
-                    data-scale={scale}
-                    data-minutes={period.getMinutes()}
-                    data-hour-mark={
-                      scale === 'day' && period.getHours() % 3 === 0 ? 'true' : undefined
-                    }
-                  >
-                    <span>{formatPeriodLabel(period)}</span>
-                  </Box>
-                ))}
+                {visiblePeriods.map((period, index) => {
+                  return (
+                    <Box
+                      {...getStyles('dateCell')}
+                      key={index}
+                      style={{ width: getPeriodWidth() }}
+                      data-mark-type={periodConfig.getMarkType(period)}
+                      data-scale={scale}
+                      data-minutes={period.getMinutes()}
+                    >
+                      <span>{formatPeriodLabel(period)}</span>
+                    </Box>
+                  );
+                })}
               </div>
             </Box>
             <Box {...getStyles('tasksView')}>
               <Box {...getStyles('periodGrid')} style={{ left: periodsOffset }}>
-                {visiblePeriods.map((period, index) => (
-                  <Box
-                    key={index}
-                    {...getStyles('periodGridLine')}
-                    style={{ width: getPeriodWidth() }}
-                    data-weekend={['week', 'bi-week', 'month'].includes(scale) && isWeekend(period)}
-                    data-scale={scale}
-                    data-minutes={period.getMinutes()}
-                    data-hour-mark={
-                      scale === 'day' && period.getHours() % 3 === 0 ? 'true' : undefined
-                    }
-                  />
-                ))}
+                {visiblePeriods.map((period, index) => {
+                  return (
+                    <Box
+                      key={index}
+                      {...getStyles('periodGridLine')}
+                      style={{ width: getPeriodWidth() }}
+                      data-mark-type={periodConfig.getMarkType(period)}
+                      data-scale={scale}
+                      data-minutes={period.getMinutes()}
+                    />
+                  );
+                })}
               </Box>
               {data.map((d) => (
                 <Box {...getStyles('taskLine')} key={d.id}>

@@ -5,3 +5,6 @@ export type {
   GanttChartFactory,
   GanttChartStylesNames,
 } from './GanttChart';
+
+export { PERIOD_CONFIGS } from './GanttChartPeriodConfig';
+export type { PeriodConfig, PeriodScale } from './GanttChartPeriodConfig';

@@ -1,3 +1,4 @@
+import React from 'react';
 import { GanttChart } from './GanttChart';
 
 export default { title: 'GanttChart' };
