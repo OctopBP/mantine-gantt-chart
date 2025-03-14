@@ -251,11 +251,19 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       switch (scale) {
         case 'hours':
           return (
+            period.getFullYear() === task.start.getFullYear() &&
+            period.getMonth() === task.start.getMonth() &&
+            period.getDate() === task.start.getDate() &&
             period.getHours() === task.start.getHours() &&
             Math.floor(period.getMinutes() / 15) === Math.floor(task.start.getMinutes() / 15)
           );
         case 'day':
-          return period.getHours() === task.start.getHours();
+          return (
+            period.getFullYear() === task.start.getFullYear() &&
+            period.getMonth() === task.start.getMonth() &&
+            period.getDate() === task.start.getDate() &&
+            period.getHours() === task.start.getHours()
+          );
         case 'week':
         case 'bi-week':
         case 'month':
@@ -289,11 +297,19 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       switch (scale) {
         case 'hours':
           return (
+            period.getFullYear() === task.end.getFullYear() &&
+            period.getMonth() === task.end.getMonth() &&
+            period.getDate() === task.end.getDate() &&
             period.getHours() === task.end.getHours() &&
             Math.floor(period.getMinutes() / 15) === Math.floor(task.end.getMinutes() / 15)
           );
         case 'day':
-          return period.getHours() === task.end.getHours();
+          return (
+            period.getFullYear() === task.end.getFullYear() &&
+            period.getMonth() === task.end.getMonth() &&
+            period.getDate() === task.end.getDate() &&
+            period.getHours() === task.end.getHours()
+          );
         case 'week':
         case 'bi-week':
         case 'month':
