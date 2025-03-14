@@ -102,7 +102,6 @@
   border-left: 1px solid var(--mantine-color-dark-5);
   border-right: 1px solid var(--mantine-color-dark-5);
   height: 100%;
-  transition: background-color 0.2s ease;
 }
 
 /* Mark type styles for grid lines */
@@ -149,7 +148,9 @@
   white-space: nowrap;
   cursor: pointer;
   border: 1px solid var(--mantine-color-dark-3);
-  transition: all 0.2s ease;
+  transition:
+    left 0.2s ease,
+    width 0.2s ease;
 }
 
 .task:hover {

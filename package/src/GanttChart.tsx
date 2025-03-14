@@ -99,6 +99,11 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     ...others
   } = props;
 
+  // Constants for chart configuration
+  const MIN_PERIODS = 30; // Minimum number of periods to display
+  const PERIODS_BEFORE = 3; // Number of periods to add before the start date
+  const BUFFER_SIZE = 20; // Extra items to render on each side
+
   const [scale, setInternalScale] = useState<PeriodScale>(externalScale || 'day');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 50 });
@@ -122,12 +127,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   // Calculate the date range for the chart with a minimum width
   const dateRange = useMemo(() => {
     if (data.length === 0) {
-      // If no data, show current date plus 30 periods
+      // If no data, show current date plus MIN_PERIODS periods
       const start = new Date();
       const end = add(new Date(), {
         ...periodConfig.increment,
         ...{
-          [Object.keys(periodConfig.increment)[0]]: 30 * Object.values(periodConfig.increment)[0],
+          [Object.keys(periodConfig.increment)[0]]:
+            MIN_PERIODS * Object.values(periodConfig.increment)[0],
         },
       });
       return { start, end };
@@ -138,8 +144,14 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
 
-    // Ensure we have at least 30 periods visible
-    const minPeriods = 30;
+    // Add PERIODS_BEFORE periods before the start date for padding
+    const paddedStart = add(minDate, {
+      ...periodConfig.increment,
+      ...{
+        [Object.keys(periodConfig.increment)[0]]:
+          -PERIODS_BEFORE * Object.values(periodConfig.increment)[0],
+      },
+    });
 
     // Create a temporary array of periods to calculate how many the tasks span
     let tempDate = new Date(minDate);
@@ -150,9 +162,9 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       tempDate = add(tempDate, periodConfig.increment);
     }
 
-    // If tasks span fewer than minPeriods, extend the end date
-    if (periodCount < minPeriods) {
-      const periodsToAdd = minPeriods - periodCount;
+    // If tasks span fewer than MIN_PERIODS, extend the end date
+    if (periodCount < MIN_PERIODS) {
+      const periodsToAdd = MIN_PERIODS - periodCount;
       const end = add(maxDate, {
         ...periodConfig.increment,
         ...{
@@ -160,11 +172,11 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             periodsToAdd * Object.values(periodConfig.increment)[0],
         },
       });
-      return { start: minDate, end };
+      return { start: paddedStart, end };
     }
 
-    return { start: minDate, end: maxDate };
-  }, [data, periodConfig]);
+    return { start: paddedStart, end: maxDate };
+  }, [data, periodConfig, MIN_PERIODS, PERIODS_BEFORE]);
 
   // Get period width based on scale
   const getPeriodWidth = () => `${periodConfig.width}rem`;
@@ -198,17 +210,16 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Get only the visible periods with some buffer
   const visiblePeriods = useMemo(() => {
-    const buffer = 20; // Extra items to render on each side
-    const start = Math.max(0, visibleRange.startIndex - buffer);
-    const end = Math.min(allPeriods.length, visibleRange.endIndex + buffer);
+    const start = Math.max(0, visibleRange.startIndex - BUFFER_SIZE);
+    const end = Math.min(allPeriods.length, visibleRange.endIndex + BUFFER_SIZE);
     return allPeriods.slice(start, end);
-  }, [allPeriods, visibleRange]);
+  }, [allPeriods, visibleRange, BUFFER_SIZE]);
 
   // Calculate the offset for the visible periods
   const periodsOffset = useMemo(() => {
-    const start = Math.max(0, visibleRange.startIndex - 20);
+    const start = Math.max(0, visibleRange.startIndex - BUFFER_SIZE);
     return `${start * getPeriodWidthValue()}rem`;
-  }, [visibleRange, getPeriodWidthValue]);
+  }, [visibleRange, getPeriodWidthValue, BUFFER_SIZE]);
 
   // Update visible range on scroll
   const handleScroll = (scrollPosition: { x: number; y: number }) => {

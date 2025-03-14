@@ -93,15 +93,15 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
     getMarkType: (_date: Date) => 'major',
   },
   year: {
-    width: 1.25,
+    width: 2,
     labelFormat: 'd', // Week number
     headerFormat: 'MMMM yyyy',
     increment: { days: 7 },
     getMarkType: (_date: Date) => 'major',
   },
   '5-years': {
-    width: 1,
-    labelFormat: 'MMM', // Short month name
+    width: 2,
+    labelFormat: 'M', // Short month name
     headerFormat: 'yyyy', // Year
     increment: { months: 1 },
     getMarkType: (date: Date) => {
