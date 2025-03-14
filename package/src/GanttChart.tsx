@@ -25,7 +25,8 @@ export type GanttChartStylesNames =
   | 'markMajor'
   | 'markMinor'
   | 'markWeekend'
-  | 'markNone';
+  | 'markNone'
+  | 'todayLine';
 
 export type GanttChartCssVariables = {};
 
@@ -153,8 +154,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       },
     });
 
-    // Create a temporary array of periods to calculate how many the tasks span
-    let tempDate = new Date(minDate);
+    // Calculate how many periods the tasks span
+    let tempDate = new Date(paddedStart);
     let periodCount = 0;
 
     while (tempDate <= maxDate) {
@@ -180,9 +181,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Get period width based on scale
   const getPeriodWidth = () => `${periodConfig.width}rem`;
-
-  // Get numeric value of period width
-  const getPeriodWidthValue = () => periodConfig.width;
 
   // Get all periods between start and end date with pooling
   const allPeriods = useMemo(() => {
@@ -218,8 +216,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   // Calculate the offset for the visible periods
   const periodsOffset = useMemo(() => {
     const start = Math.max(0, visibleRange.startIndex - BUFFER_SIZE);
-    return `${start * getPeriodWidthValue()}rem`;
-  }, [visibleRange, getPeriodWidthValue, BUFFER_SIZE]);
+    return `${start * periodConfig.width}rem`;
+  }, [visibleRange, periodConfig.width, BUFFER_SIZE]);
 
   // Update visible range on scroll
   const handleScroll = (scrollPosition: { x: number; y: number }) => {
@@ -227,7 +225,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return;
     }
 
-    const periodWidthPx = getPeriodWidthValue() * 16; // convert rem to px
+    const periodWidthPx = periodConfig.width * 16; // convert rem to px
     const startIndex = Math.floor(scrollPosition.x / periodWidthPx);
     const containerWidth = scrollAreaRef.current.clientWidth;
     const visiblePeriods = Math.ceil(containerWidth / periodWidthPx);
@@ -245,7 +243,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Calculate task position and width with pooling
   const getTaskStyle = (task: GanttChartData) => {
-    const periodWidth = getPeriodWidthValue();
+    const periodWidth = periodConfig.width;
 
     // Find the index of the period that contains the task start date
     const startIndex = allPeriods.findIndex((period) => {
@@ -345,13 +343,37 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Update the total width for the container
   const totalWidth = useMemo(() => {
-    return `${allPeriods.length * getPeriodWidthValue()}rem`;
-  }, [allPeriods, getPeriodWidthValue]);
+    return `${allPeriods.length * periodConfig.width}rem`;
+  }, [allPeriods, periodConfig.width]);
 
   // Effect to update visible range when scale changes
   useEffect(() => {
     setVisibleRange({ startIndex: 0, endIndex: 50 });
   }, [scale]);
+
+  // Inside the GanttChart component, update the function to calculate the position of today's line
+  const getTodayPosition = useMemo(() => {
+    const today = new Date();
+
+    // Find the exact position by calculating the time difference from the start date
+    const rangeStartTime = dateRange.start.getTime();
+    const todayTime = today.getTime();
+    const rangeEndTime = dateRange.end.getTime();
+
+    // If today is outside our date range, don't show the line
+    if (todayTime < rangeStartTime || todayTime > rangeEndTime) {
+      return null;
+    }
+
+    // Calculate the exact position based on time difference
+    const totalTimeRange = rangeEndTime - rangeStartTime;
+    const todayOffset = todayTime - rangeStartTime;
+    const positionPercentage = todayOffset / totalTimeRange;
+
+    // Calculate the position in rems based on the total width
+    const totalWidthRem = allPeriods.length * periodConfig.width;
+    return `${positionPercentage * totalWidthRem}rem`;
+  }, [dateRange, allPeriods, periodConfig.width]);
 
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
@@ -439,6 +461,9 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                   </Box>
                 ))}
               </div>
+              {getTodayPosition && (
+                <Box {...getStyles('todayLine')} style={{ left: getTodayPosition }} title="Today" />
+              )}
             </Box>
           </div>
         </ScrollArea>
