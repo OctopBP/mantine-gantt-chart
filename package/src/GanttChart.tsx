@@ -442,33 +442,103 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
     const today = new Date();
 
-    // Find today's index in current periods array
-    let todayIndex = -1;
+    // Define variables for edge detection
+    const edgeThreshold = Math.floor(TOTAL_PERIODS * 0.25);
+    let edgeOverride = false; // Used to override edge detection in special cases
 
     // Try to find exact match
-    todayIndex = allPeriods.findIndex((period) => {
-      switch (scale) {
-        case 'hours':
-          return isSameHour(period, today) && isSameDay(period, today);
-        case 'day':
-          return isSameDay(period, today);
-        default:
-          return isSameDay(period, today);
+    let todayIndex = allPeriods.findIndex((period) => {
+      if (scale === 'hours') {
+        // For hours scale, we need to check if today is between period and the next period
+        const periodHour = period.getHours();
+        const periodMinutes = period.getMinutes();
+        const todayHour = today.getHours();
+        const todayMinutes = today.getMinutes();
+
+        // Check if it's the same day and same hour
+        const sameDayAndHour = isSameDay(period, today) && periodHour === todayHour;
+
+        // Also match if today is in the current period's time slot (same day, same hour, minutes match 15-min slot)
+        const sameSlot =
+          isSameDay(period, today) &&
+          periodHour === todayHour &&
+          Math.floor(periodMinutes / 15) === Math.floor(todayMinutes / 15);
+
+        return sameDayAndHour || sameSlot;
       }
+
+      if (scale === 'day') {
+        return isSameDay(period, today);
+      }
+
+      return isSameDay(period, today);
     });
 
+    // If not found with exact match, try to find the closest hour period on the same day
+    if (todayIndex === -1 && scale === 'hours') {
+      // Find periods that are on the same day
+      const sameDayPeriods = allPeriods.filter((period) => isSameDay(period, today));
+
+      if (sameDayPeriods.length > 0) {
+        // Get the closest period based on time difference
+        let closestPeriod = sameDayPeriods[0];
+        let minDiff = Math.abs(closestPeriod.getTime() - today.getTime());
+
+        sameDayPeriods.forEach((period) => {
+          const diff = Math.abs(period.getTime() - today.getTime());
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestPeriod = period;
+          }
+        });
+
+        todayIndex = allPeriods.indexOf(closestPeriod);
+
+        // Check if the found period is "truly" at the edge or just appears to be
+        // If we have same-day periods earlier or later in the array, we're not really at the edge
+        const hasEarlierPeriodsOnSameDay =
+          todayIndex > 0 && sameDayPeriods.some((p) => allPeriods.indexOf(p) < todayIndex);
+        const hasLaterPeriodsOnSameDay =
+          todayIndex < allPeriods.length - 1 &&
+          sameDayPeriods.some((p) => allPeriods.indexOf(p) > todayIndex);
+
+        // If we have other periods on the same day, then the current index isn't really at the edge
+        // for the purpose of today detection (we just happened to get a time between period boundaries)
+        if (
+          (todayIndex < edgeThreshold && hasEarlierPeriodsOnSameDay) ||
+          (todayIndex > TOTAL_PERIODS - edgeThreshold && hasLaterPeriodsOnSameDay)
+        ) {
+          // Override the needs regeneration check in the following code
+          edgeOverride = true;
+        }
+      }
+    }
+
     // Check if today is near the edge (or not found)
-    const edgeThreshold = Math.floor(TOTAL_PERIODS * 0.25);
     const needsRegeneration =
-      todayIndex === -1 || todayIndex < edgeThreshold || todayIndex > TOTAL_PERIODS - edgeThreshold;
+      (todayIndex === -1 ||
+        todayIndex < edgeThreshold ||
+        todayIndex > TOTAL_PERIODS - edgeThreshold) &&
+      !edgeOverride;
 
     if (needsRegeneration) {
       // Generate new periods centered around today
       const newPeriods: Date[] = [];
       const halfCount = Math.floor(TOTAL_PERIODS / 2);
 
+      // For hours scale, align with standard 15-minute intervals (00, 15, 30, 45)
+      let alignedDate = new Date(today);
+      if (scale === 'hours') {
+        // Round to the nearest 15-minute mark
+        const minutes = today.getMinutes();
+        const roundedMinutes = Math.floor(minutes / 15) * 15;
+
+        alignedDate = new Date(today);
+        alignedDate.setMinutes(roundedMinutes, 0, 0);
+      }
+
       // Generate periods before today
-      let tempDate = new Date(today);
+      let tempDate = new Date(alignedDate);
       for (let i = 0; i < halfCount; i++) {
         tempDate = add(tempDate, {
           ...periodConfig.increment,
@@ -480,8 +550,9 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       }
 
       // Add today and future periods
-      newPeriods.push(new Date(today));
-      tempDate = new Date(today);
+      newPeriods.push(new Date(alignedDate));
+      tempDate = new Date(alignedDate);
+
       for (let i = 0; i < halfCount - 1; i++) {
         tempDate = add(tempDate, periodConfig.increment);
         newPeriods.push(new Date(tempDate));
@@ -493,10 +564,14 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
       // Update today index and visible range
       todayIndex = halfCount;
+
       const visibleCount = Math.ceil(containerRef.current.clientWidth / (periodConfig.width * 16));
+      const startIndex = Math.max(0, todayIndex - Math.floor(visibleCount / 2));
+      const endIndex = todayIndex + Math.ceil(visibleCount / 2);
+
       setVisibleRange({
-        startIndex: Math.max(0, todayIndex - Math.floor(visibleCount / 2)),
-        endIndex: todayIndex + Math.ceil(visibleCount / 2),
+        startIndex,
+        endIndex,
       });
 
       // Scroll to today position (using requestAnimationFrame for better timing)
@@ -507,7 +582,9 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             0,
             todayIndex * periodWidthPx - containerRef.current.clientWidth / 2
           );
+
           containerRef.current.scrollLeft = targetPosition;
+
           setIsShifting(false);
           setScrollDirection(null);
         }
@@ -519,6 +596,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         0,
         todayIndex * periodWidthPx - containerRef.current.clientWidth / 2
       );
+
       containerRef.current.scrollLeft = targetPosition;
 
       // Reset loading state
@@ -658,16 +736,54 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     }
 
     // Find closest period to today
-    const todayIndex = allPeriods.findIndex((period) => {
-      switch (scale) {
-        case 'hours':
-          return isSameHour(period, today) && isSameDay(period, today);
-        case 'day':
-          return isSameDay(period, today);
-        default:
-          return isSameDay(period, today);
+    let todayIndex = allPeriods.findIndex((period) => {
+      if (scale === 'hours') {
+        // For hours scale, we need to check if today is between period and the next period
+        const periodHour = period.getHours();
+        const periodMinutes = period.getMinutes();
+        const todayHour = today.getHours();
+        const todayMinutes = today.getMinutes();
+
+        // Check if it's the same day and same hour
+        const sameDayAndHour = isSameDay(period, today) && periodHour === todayHour;
+
+        // Also match if today is in the current period's time slot (same day, same hour, minutes match 15-min slot)
+        const sameSlot =
+          isSameDay(period, today) &&
+          periodHour === todayHour &&
+          Math.floor(periodMinutes / 15) === Math.floor(todayMinutes / 15);
+
+        return sameDayAndHour || sameSlot;
       }
+
+      if (scale === 'day') {
+        return isSameDay(period, today);
+      }
+
+      return isSameDay(period, today);
     });
+
+    // If not found with exact match and scale is hours, try to find the closest hour period on the same day
+    if (todayIndex === -1 && scale === 'hours') {
+      // Find periods that are on the same day
+      const sameDayPeriods = allPeriods.filter((period) => isSameDay(period, today));
+
+      if (sameDayPeriods.length > 0) {
+        // Get the closest period based on time difference
+        let closestPeriod = sameDayPeriods[0];
+        let minDiff = Math.abs(closestPeriod.getTime() - today.getTime());
+
+        sameDayPeriods.forEach((period) => {
+          const diff = Math.abs(period.getTime() - today.getTime());
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestPeriod = period;
+          }
+        });
+
+        todayIndex = allPeriods.indexOf(closestPeriod);
+      }
+    }
 
     if (todayIndex === -1) {
       return null;
