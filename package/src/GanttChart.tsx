@@ -419,17 +419,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     SCROLL_THRESHOLD,
   ]);
 
-  // Scroll to center
-  const scrollToCenter = useCallback(() => {
-    if (containerRef.current) {
-      const centerIndex = Math.floor(allPeriods.length / 2);
-      const periodWidthPx = periodConfig.width * 16; // convert rem to px
-
-      containerRef.current.scrollLeft =
-        centerIndex * periodWidthPx - containerRef.current.clientWidth / 2;
-    }
-  }, [allPeriods.length, periodConfig.width]);
-
   // Scroll to today
   const scrollToToday = useCallback(() => {
     if (!containerRef.current) {
@@ -840,15 +829,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
               aria-label="Scroll to today"
             >
               Today
-            </Button>
-            <Button
-              variant="filled"
-              radius="xl"
-              size="lg"
-              onClick={scrollToCenter}
-              aria-label="Scroll to center"
-            >
-              Center
             </Button>
           </div>
         )}
