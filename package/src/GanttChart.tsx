@@ -1,4 +1,4 @@
-import { add, format, isSameDay, isSameHour, isSameMonth, isSameYear } from 'date-fns'
+import { add, format } from 'date-fns'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     Box, BoxProps, Button, createVarsResolver, ElementProps, factory, Factory, Loader, MantineColor,
@@ -444,43 +444,21 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
     // Define variables for edge detection
     const edgeThreshold = Math.floor(TOTAL_PERIODS * 0.25);
-    let edgeOverride = false; // Used to override edge detection in special cases
 
-    // For hours scale, align with standard 15-minute intervals (00, 15, 30, 45)
-    let alignedToday = new Date(today);
-    if (scale === 'hours') {
-      // Round to the nearest 15-minute mark
-      const minutes = today.getMinutes();
-      const roundedMinutes = Math.floor(minutes / 15) * 15;
-      alignedToday = new Date(today);
-      alignedToday.setMinutes(roundedMinutes, 0, 0);
-    }
+    // Align today according to scale
+    const alignedToday = periodConfig.alignDate(today);
 
     // Try to find exact match
-    let todayIndex = allPeriods.findIndex((period) => {
-      if (scale === 'hours') {
-        // For hours scale, compare year, month, day, hour, and the same 15-minute slot
-        return (
-          isSameYear(period, alignedToday) &&
-          isSameMonth(period, alignedToday) &&
-          isSameDay(period, alignedToday) &&
-          period.getHours() === alignedToday.getHours() &&
-          Math.floor(period.getMinutes() / 15) === Math.floor(alignedToday.getMinutes() / 15)
-        );
-      }
-
-      if (scale === 'day') {
-        return isSameDay(period, today);
-      }
-
-      return isSameDay(period, today);
-    });
+    let todayIndex = allPeriods.findIndex((period) =>
+      periodConfig.isPeriodExactMatch(period, alignedToday)
+    );
 
     // If not found with exact match, try to find the closest period on the same day
     if (todayIndex === -1) {
-      // Find periods that are on the same day for hours scale, or closest dates for other scales
-      const relevantPeriods =
-        scale === 'hours' ? allPeriods.filter((period) => isSameDay(period, today)) : allPeriods;
+      // Find periods that are on the same day for current scale
+      const relevantPeriods = allPeriods.filter((period) =>
+        periodConfig.isPeriodOnSameDay(period, today)
+      );
 
       if (relevantPeriods.length > 0) {
         // Get the closest period based on time difference
@@ -496,36 +474,43 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         });
 
         todayIndex = allPeriods.indexOf(closestPeriod);
-
-        // For hours scale, check if the found period is "truly" at the edge or just appears to be
-        if (scale === 'hours') {
-          // If we have same-day periods earlier or later in the array, we're not really at the edge
-          const sameDayPeriods = relevantPeriods;
-          const hasEarlierPeriodsOnSameDay =
-            todayIndex > 0 && sameDayPeriods.some((p) => allPeriods.indexOf(p) < todayIndex);
-          const hasLaterPeriodsOnSameDay =
-            todayIndex < allPeriods.length - 1 &&
-            sameDayPeriods.some((p) => allPeriods.indexOf(p) > todayIndex);
-
-          // If we have other periods on the same day, then the current index isn't really at the edge
-          // for the purpose of today detection (we just happened to get a time between period boundaries)
-          if (
-            (todayIndex < edgeThreshold && hasEarlierPeriodsOnSameDay) ||
-            (todayIndex > TOTAL_PERIODS - edgeThreshold && hasLaterPeriodsOnSameDay)
-          ) {
-            // Override the needs regeneration check in the following code
-            edgeOverride = true;
-          }
-        }
       }
     }
 
-    // Check if today is near the edge (or not found)
-    const needsRegeneration =
-      (todayIndex === -1 ||
-        todayIndex < edgeThreshold ||
-        todayIndex > TOTAL_PERIODS - edgeThreshold) &&
-      !edgeOverride;
+    // Determine if we need to regenerate periods
+    let needsRegeneration = todayIndex === -1;
+
+    if (!needsRegeneration) {
+      // Check if today is near the edge
+      const isNearEdge = todayIndex < edgeThreshold || todayIndex > TOTAL_PERIODS - edgeThreshold;
+
+      if (isNearEdge) {
+        // Find periods that are on the same day
+        const relevantPeriods = allPeriods.filter((period) =>
+          periodConfig.isPeriodOnSameDay(period, today)
+        );
+
+        // If we're near the edge, check if there are other periods on the same day
+        // that would make regeneration unnecessary
+        const hasEarlierPeriodsOnSameDay =
+          todayIndex > 0 && relevantPeriods.some((p) => allPeriods.indexOf(p) < todayIndex);
+        const hasLaterPeriodsOnSameDay =
+          todayIndex < allPeriods.length - 1 &&
+          relevantPeriods.some((p) => allPeriods.indexOf(p) > todayIndex);
+
+        // If we're near the left edge but have earlier periods on the same day,
+        // or we're near the right edge but have later periods on the same day,
+        // then we don't actually need to regenerate
+        if (
+          (todayIndex < edgeThreshold && hasEarlierPeriodsOnSameDay) ||
+          (todayIndex > TOTAL_PERIODS - edgeThreshold && hasLaterPeriodsOnSameDay)
+        ) {
+          needsRegeneration = false;
+        } else {
+          needsRegeneration = true;
+        }
+      }
+    }
 
     if (needsRegeneration) {
       // Generate new periods centered around today
@@ -533,7 +518,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       const halfCount = Math.floor(TOTAL_PERIODS / 2);
 
       // Use the aligned date from earlier
-      const centerDate = scale === 'hours' ? alignedToday : today;
+      const centerDate = alignedToday;
 
       // Generate periods before today
       let tempDate = new Date(centerDate);
@@ -608,7 +593,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     }
   }, [
     allPeriods,
-    scale,
     periodConfig,
     TOTAL_PERIODS,
     setIsShifting,
@@ -627,87 +611,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     const periodWidth = periodConfig.width;
 
     // Find the index of the period that contains the task start date
-    const startIndex = allPeriods.findIndex((period) => {
-      switch (scale) {
-        case 'hours':
-          // For hours scale, compare year, month, day, hour, and 15-minute interval
-          return (
-            isSameYear(period, task.start) &&
-            isSameMonth(period, task.start) &&
-            isSameDay(period, task.start) &&
-            isSameHour(period, task.start) &&
-            Math.floor(period.getMinutes() / 15) === Math.floor(task.start.getMinutes() / 15)
-          );
-        case 'day':
-          // For day scale, compare year, month, day, and hour
-          return (
-            isSameYear(period, task.start) &&
-            isSameMonth(period, task.start) &&
-            isSameDay(period, task.start) &&
-            isSameHour(period, task.start)
-          );
-        case 'week':
-        case 'bi-week':
-        case 'month':
-          // For week, bi-week, and month scales, compare year, month, and day
-          return isSameDay(period, task.start);
-        case 'quarter':
-        case 'year':
-          // For quarter and year scales, compare year, month, and week
-          return (
-            isSameYear(period, task.start) &&
-            isSameMonth(period, task.start) &&
-            Math.floor(period.getDate() / 7) === Math.floor(task.start.getDate() / 7)
-          );
-        case '5-years':
-          // For 5-years scale, compare year and month
-          return isSameMonth(period, task.start) && isSameYear(period, task.start);
-        default:
-          // Default case, compare year, month, and day
-          return isSameDay(period, task.start);
-      }
-    });
+    const startIndex = allPeriods.findIndex((period) =>
+      periodConfig.isPeriodExactMatch(period, task.start)
+    );
 
-    const endIndex = allPeriods.findIndex((period) => {
-      switch (scale) {
-        case 'hours':
-          // For hours scale, compare year, month, day, hour, and 15-minute interval
-          return (
-            isSameYear(period, task.end) &&
-            isSameMonth(period, task.end) &&
-            isSameDay(period, task.end) &&
-            isSameHour(period, task.end) &&
-            Math.floor(period.getMinutes() / 15) === Math.floor(task.end.getMinutes() / 15)
-          );
-        case 'day':
-          // For day scale, compare year, month, day, and hour
-          return (
-            isSameYear(period, task.end) &&
-            isSameMonth(period, task.end) &&
-            isSameDay(period, task.end) &&
-            isSameHour(period, task.end)
-          );
-        case 'week':
-        case 'bi-week':
-        case 'month':
-          // For week, bi-week, and month scales, compare year, month, and day
-          return isSameDay(period, task.end);
-        case 'quarter':
-        case 'year':
-          // For quarter and year scales, compare year, month, and week
-          return (
-            isSameYear(period, task.end) &&
-            isSameMonth(period, task.end) &&
-            Math.floor(period.getDate() / 7) === Math.floor(task.end.getDate() / 7)
-          );
-        case '5-years':
-          // For 5-years scale, compare year and month
-          return isSameMonth(period, task.end) && isSameYear(period, task.end);
-        default:
-          // Default case, compare year, month, and day
-          return isSameDay(period, task.end);
-      }
-    });
+    const endIndex = allPeriods.findIndex((period) =>
+      periodConfig.isPeriodExactMatch(period, task.end)
+    );
 
     // If we couldn't find the period, return a style that hides the task
     if (startIndex === -1 || endIndex === -1) {
@@ -736,41 +646,20 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return null;
     }
 
-    // For hours scale, align with standard 15-minute intervals (00, 15, 30, 45)
-    let alignedToday = new Date(today);
-    if (scale === 'hours') {
-      // Round to the nearest 15-minute mark
-      const minutes = today.getMinutes();
-      const roundedMinutes = Math.floor(minutes / 15) * 15;
-      alignedToday = new Date(today);
-      alignedToday.setMinutes(roundedMinutes, 0, 0);
-    }
+    // Align today according to scale
+    const alignedToday = periodConfig.alignDate(today);
 
     // Find closest period to today
-    let todayIndex = allPeriods.findIndex((period) => {
-      if (scale === 'hours') {
-        // For hours scale, compare year, month, day, hour, and the same 15-minute slot
-        return (
-          isSameYear(period, alignedToday) &&
-          isSameMonth(period, alignedToday) &&
-          isSameDay(period, alignedToday) &&
-          period.getHours() === alignedToday.getHours() &&
-          Math.floor(period.getMinutes() / 15) === Math.floor(alignedToday.getMinutes() / 15)
-        );
-      }
-
-      if (scale === 'day') {
-        return isSameDay(period, today);
-      }
-
-      return isSameDay(period, today);
-    });
+    let todayIndex = allPeriods.findIndex((period) =>
+      periodConfig.isPeriodExactMatch(period, alignedToday)
+    );
 
     // If not found with exact match, try to find the closest period
     if (todayIndex === -1) {
-      // Find periods that are on the same day for hours scale, or closest dates for other scales
-      const relevantPeriods =
-        scale === 'hours' ? allPeriods.filter((period) => isSameDay(period, today)) : allPeriods;
+      // Find periods that are on the same day for current scale
+      const relevantPeriods = allPeriods.filter((period) =>
+        periodConfig.isPeriodOnSameDay(period, today)
+      );
 
       if (relevantPeriods.length > 0) {
         // Get the closest period based on time difference
@@ -794,7 +683,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     }
 
     return `${todayIndex * periodConfig.width}rem`;
-  }, [allPeriods, scale, periodConfig.width]);
+  }, [allPeriods, periodConfig]);
 
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
