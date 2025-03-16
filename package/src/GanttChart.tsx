@@ -112,7 +112,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const [scrollDirection, setScrollDirection] = useState<'left' | 'right' | null>(null);
   const [isShifting, setIsShifting] = useState(false);
-  const [showScrollToTop, setShowScrollToTop] = useState(true);
   const lastScrollLeft = useRef(0);
   const isInitialRender = useRef(true);
 
@@ -380,9 +379,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
     // Update last scroll position
     lastScrollLeft.current = scrollLeft;
-
-    // Show scroll-to-top button when scrolled horizontally
-    setShowScrollToTop(scrollLeft > 300);
 
     // Calculate scroll thresholds
     const leftThreshold = totalWidthPx * SCROLL_THRESHOLD;
@@ -695,22 +691,33 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
               ? format(allPeriods[allPeriods.length - 1], periodConfig.headerFormat)
               : ''}
           </Text>
-          <Select
-            variant="unstyled"
-            data={SCALE_OPTIONS}
-            value={scale}
-            w="6.5rem"
-            onChange={(value) => {
-              if (value) {
-                const newScale = value as PeriodScale;
-                if (onScaleChange) {
-                  onScaleChange(newScale);
-                } else {
-                  setInternalScale(newScale);
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Button
+              variant="transparent"
+              size="compact-sm"
+              color="gray"
+              onClick={scrollToToday}
+              aria-label="Scroll to today"
+            >
+              Today
+            </Button>
+            <Select
+              variant="unstyled"
+              data={SCALE_OPTIONS}
+              value={scale}
+              w="6.5rem"
+              onChange={(value) => {
+                if (value) {
+                  const newScale = value as PeriodScale;
+                  if (onScaleChange) {
+                    onScaleChange(newScale);
+                  } else {
+                    setInternalScale(newScale);
+                  }
                 }
-              }
-            }}
-          />
+              }}
+            />
+          </div>
         </Box>
         <Box
           {...getStyles('scrollArea')}
@@ -808,30 +815,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             )}
           </div>
         </Box>
-
-        {/* Scroll to center and today buttons */}
-        {showScrollToTop && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '1rem',
-              right: '1rem',
-              zIndex: 10,
-              display: 'flex',
-              gap: '0.5rem',
-            }}
-          >
-            <Button
-              variant="filled"
-              radius="xl"
-              size="lg"
-              onClick={scrollToToday}
-              aria-label="Scroll to today"
-            >
-              Today
-            </Button>
-          </div>
-        )}
       </Box>
     </Box>
   );
