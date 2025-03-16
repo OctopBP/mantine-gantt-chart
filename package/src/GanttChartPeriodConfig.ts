@@ -73,7 +73,7 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
   },
   'bi-week': {
     width: 3.5,
-    labelFormat: 'd', // Day of month
+    labelFormat: 'd.M', // Day of month
     headerFormat: 'MMMM yyyy',
     increment: { days: 1 },
     getMarkType: (date: Date) => (dateFnsIsWeekend(date) ? 'weekend' : 'major'),

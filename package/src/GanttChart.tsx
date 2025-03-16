@@ -101,7 +101,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   } = props;
 
   // Constants for chart configuration
-  const TOTAL_PERIODS = 500; // Fixed total number of periods to maintain
+  const TOTAL_PERIODS = 200; // Fixed total number of periods to maintain
   const VISIBLE_BUFFER = 50; // Extra items to render on each side of visible area
   const SCROLL_THRESHOLD = 0.2; // When to shift the window (20% from edge)
   const PERIODS_TO_SHIFT = 100; // Number of periods to shift when reaching threshold
@@ -425,12 +425,118 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       const centerIndex = Math.floor(allPeriods.length / 2);
       const periodWidthPx = periodConfig.width * 16; // convert rem to px
 
-      containerRef.current.scrollTo({
-        left: centerIndex * periodWidthPx - containerRef.current.clientWidth / 2,
-        behavior: 'smooth',
-      });
+      containerRef.current.scrollLeft =
+        centerIndex * periodWidthPx - containerRef.current.clientWidth / 2;
     }
   }, [allPeriods.length, periodConfig.width]);
+
+  // Scroll to today
+  const scrollToToday = useCallback(() => {
+    if (!containerRef.current) {
+      return;
+    }
+
+    // Start loading indicator
+    setIsShifting(true);
+    setScrollDirection(null);
+
+    const today = new Date();
+
+    // Find today's index in current periods array
+    let todayIndex = -1;
+
+    // Try to find exact match
+    todayIndex = allPeriods.findIndex((period) => {
+      switch (scale) {
+        case 'hours':
+          return isSameHour(period, today) && isSameDay(period, today);
+        case 'day':
+          return isSameDay(period, today);
+        default:
+          return isSameDay(period, today);
+      }
+    });
+
+    // Check if today is near the edge (or not found)
+    const edgeThreshold = Math.floor(TOTAL_PERIODS * 0.25);
+    const needsRegeneration =
+      todayIndex === -1 || todayIndex < edgeThreshold || todayIndex > TOTAL_PERIODS - edgeThreshold;
+
+    if (needsRegeneration) {
+      // Generate new periods centered around today
+      const newPeriods: Date[] = [];
+      const halfCount = Math.floor(TOTAL_PERIODS / 2);
+
+      // Generate periods before today
+      let tempDate = new Date(today);
+      for (let i = 0; i < halfCount; i++) {
+        tempDate = add(tempDate, {
+          ...periodConfig.increment,
+          ...{
+            [Object.keys(periodConfig.increment)[0]]: -Object.values(periodConfig.increment)[0],
+          },
+        });
+        newPeriods.unshift(new Date(tempDate));
+      }
+
+      // Add today and future periods
+      newPeriods.push(new Date(today));
+      tempDate = new Date(today);
+      for (let i = 0; i < halfCount - 1; i++) {
+        tempDate = add(tempDate, periodConfig.increment);
+        newPeriods.push(new Date(tempDate));
+      }
+
+      // Reset virtual offset and update state
+      virtualOffsetRef.current = 0;
+      setAllPeriods(newPeriods);
+
+      // Update today index and visible range
+      todayIndex = halfCount;
+      const visibleCount = Math.ceil(containerRef.current.clientWidth / (periodConfig.width * 16));
+      setVisibleRange({
+        startIndex: Math.max(0, todayIndex - Math.floor(visibleCount / 2)),
+        endIndex: todayIndex + Math.ceil(visibleCount / 2),
+      });
+
+      // Scroll to today position (using requestAnimationFrame for better timing)
+      requestAnimationFrame(() => {
+        if (containerRef.current) {
+          const periodWidthPx = periodConfig.width * 16;
+          const targetPosition = Math.max(
+            0,
+            todayIndex * periodWidthPx - containerRef.current.clientWidth / 2
+          );
+          containerRef.current.scrollLeft = targetPosition;
+          setIsShifting(false);
+          setScrollDirection(null);
+        }
+      });
+    } else {
+      // Today is already in view, just scroll to it
+      const periodWidthPx = periodConfig.width * 16;
+      const targetPosition = Math.max(
+        0,
+        todayIndex * periodWidthPx - containerRef.current.clientWidth / 2
+      );
+      containerRef.current.scrollLeft = targetPosition;
+
+      // Reset loading state
+      setTimeout(() => {
+        setIsShifting(false);
+        setScrollDirection(null);
+      }, 100);
+    }
+  }, [
+    allPeriods,
+    scale,
+    periodConfig,
+    TOTAL_PERIODS,
+    setIsShifting,
+    setScrollDirection,
+    setAllPeriods,
+    setVisibleRange,
+  ]);
 
   // Format period label using the config
   const formatPeriodLabel = (date: Date) => {
@@ -705,23 +811,37 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           </div>
         </Box>
 
-        {/* Scroll to center button */}
+        {/* Scroll to center and today buttons */}
         {showScrollToTop && (
-          <Button
-            variant="filled"
-            radius="xl"
-            size="lg"
+          <div
             style={{
               position: 'absolute',
               bottom: '1rem',
               right: '1rem',
               zIndex: 10,
+              display: 'flex',
+              gap: '0.5rem',
             }}
-            onClick={scrollToCenter}
-            aria-label="Scroll to center"
           >
-            Scroll to center
-          </Button>
+            <Button
+              variant="filled"
+              radius="xl"
+              size="lg"
+              onClick={scrollToToday}
+              aria-label="Scroll to today"
+            >
+              Today
+            </Button>
+            <Button
+              variant="filled"
+              radius="xl"
+              size="lg"
+              onClick={scrollToCenter}
+              aria-label="Scroll to center"
+            >
+              Center
+            </Button>
+          </div>
         )}
       </Box>
     </Box>

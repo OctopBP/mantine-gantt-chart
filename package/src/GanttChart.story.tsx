@@ -34,8 +34,8 @@ export function Short() {
           {
             id: '0',
             name: 'Task 0',
-            start: new Date(2025, 2, 14, 12),
-            end: new Date(2025, 2, 15, 0),
+            start: new Date(2025, 2, 16, 12),
+            end: new Date(2025, 2, 17, 0),
           },
         ]}
         scale="bi-week"
