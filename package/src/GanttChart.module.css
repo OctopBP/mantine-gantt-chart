@@ -32,18 +32,45 @@
 }
 
 .controls {
+  height: 0;
+  overflow: visible;
+  position: relative;
+  z-index: 100;
+  width: 100%;
+}
+
+.controlsContainer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0.25rem;
   display: flex;
-  flex-direction: row;
-  justify-content: space-between;
   align-items: center;
-  height: 2.25rem;
-  border-bottom: 1px solid var(--mantine-color-dark-4);
-  flex-shrink: 0;
+  justify-content: space-between;
+  padding: 0 var(--mantine-spacing-sm);
+}
+
+.periodInfo {
+  font-size: var(--mantine-font-size-md);
+  color: var(--mantine-color-dimmed);
+  white-space: nowrap;
+}
+
+.controlActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .scrollArea {
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
+  position: relative;
+  width: 100%;
+}
+
+.chartContent {
+  position: relative;
 }
 
 .dates {
@@ -55,6 +82,32 @@
   color: var(--mantine-color-dark-3);
   font-size: var(--mantine-font-size-sm);
   align-items: center;
+}
+
+.datesContainer {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.periodHeadersRow {
+  display: flex;
+  height: 1.5rem;
+  margin-bottom: 0.25rem;
+  position: relative;
+}
+
+.periodHeaderGroup {
+  position: absolute;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dateCellsRow {
+  display: flex;
 }
 
 .dateCell {
@@ -94,6 +147,11 @@
   flex: 1;
   position: relative;
   overflow: hidden;
+}
+
+.tasksContainer {
+  position: relative;
+  height: 100%;
 }
 
 .periodGrid {
@@ -177,4 +235,19 @@
   width: 2px;
   background-color: var(--mantine-color-red-6);
   pointer-events: none;
+}
+
+.loadingIndicator {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.loadingIndicatorLeft {
+  left: 0.5rem;
+}
+
+.loadingIndicatorRight {
+  right: 0.5rem;
 }

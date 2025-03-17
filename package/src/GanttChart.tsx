@@ -2,7 +2,7 @@ import { add, format } from 'date-fns'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     Box, BoxProps, Button, createVarsResolver, ElementProps, factory, Factory, Loader, MantineColor,
-    Select, StylesApiProps, Text, useProps, useStyles
+    Select, StylesApiProps, useProps, useStyles
 } from '@mantine/core'
 import classes from './GanttChart.module.css'
 import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig'
@@ -12,14 +12,23 @@ export type GanttChartStylesNames =
   | 'table'
   | 'main'
   | 'controls'
+  | 'controlsContainer'
+  | 'periodInfo'
+  | 'controlActions'
   | 'dates'
   | 'dateCell'
   | 'periodHeader'
+  | 'datesContainer'
+  | 'periodHeadersRow'
+  | 'periodHeaderGroup'
+  | 'dateCellsRow'
   | 'tasksView'
   | 'tableCell'
   | 'task'
   | 'taskLine'
+  | 'tasksContainer'
   | 'scrollArea'
+  | 'chartContent'
   | 'periodGrid'
   | 'periodGridLine'
   | 'headerDate'
@@ -27,7 +36,10 @@ export type GanttChartStylesNames =
   | 'markMinor'
   | 'markWeekend'
   | 'markNone'
-  | 'todayLine';
+  | 'todayLine'
+  | 'loadingIndicator'
+  | 'loadingIndicatorLeft'
+  | 'loadingIndicatorRight';
 
 export type GanttChartCssVariables = {};
 
@@ -773,35 +785,16 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
       <Box {...getStyles('main')}>
         {/* Controls with height 0 to overlay without taking space */}
-        <Box
-          {...getStyles('controls')}
-          style={{
-            height: 0,
-            overflow: 'visible',
-            position: 'relative',
-            zIndex: 100,
-            width: '100%',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              left: '0.75rem',
-              right: '0.25rem',
-              top: '0.25rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <Text>
+        <Box {...getStyles('controls')}>
+          <div {...getStyles('controlsContainer')}>
+            <div {...getStyles('periodInfo')}>
               {allPeriods.length > 0 ? format(allPeriods[0], periodConfig.headerFormat) : ''}
               {' - '}
               {allPeriods.length > 0
                 ? format(allPeriods[allPeriods.length - 1], periodConfig.headerFormat)
                 : ''}
-            </Text>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            </div>
+            <div {...getStyles('controlActions')}>
               <Button
                 variant="transparent"
                 size="compact-sm"
@@ -831,52 +824,19 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           </div>
         </Box>
 
-        <Box
-          {...getStyles('scrollArea')}
-          ref={containerRef}
-          style={{
-            overflow: 'auto',
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-          }}
-          onScroll={handleScroll}
-        >
-          <div style={{ width: totalWidth, position: 'relative' }}>
+        <Box {...getStyles('scrollArea')} ref={containerRef} onScroll={handleScroll}>
+          <div {...getStyles('chartContent')} style={{ width: totalWidth }}>
             {/* Loading indicator for left shifting */}
             {isShifting && scrollDirection === 'left' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '0.5rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  zIndex: 10,
-                }}
-              >
+              <div {...getStyles('loadingIndicator')} {...getStyles('loadingIndicatorLeft')}>
                 <Loader size="sm" />
               </div>
             )}
 
             <Box {...getStyles('dates')}>
-              <div
-                style={{
-                  position: 'absolute',
-                  left: periodsOffset,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  width: '100%',
-                }}
-              >
+              <div {...getStyles('datesContainer')} style={{ left: periodsOffset }}>
                 {/* Period headers row */}
-                <div
-                  style={{
-                    display: 'flex',
-                    height: '1.5rem',
-                    marginBottom: '0.25rem',
-                    position: 'relative',
-                  }}
-                >
+                <div {...getStyles('periodHeadersRow')}>
                   {(() => {
                     // Group periods by their group key (e.g., month or year)
                     const groups: {
@@ -912,14 +872,10 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                       return (
                         <div
                           key={group.key}
+                          {...getStyles('periodHeaderGroup')}
                           style={{
-                            position: 'absolute',
                             left: `${group.startIndex * periodConfig.width}rem`,
                             width: `${width}rem`,
-                            height: '100%',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
                           }}
                         >
                           <div {...getStyles('periodHeader')}>{group.displayName}</div>
@@ -930,7 +886,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                 </div>
 
                 {/* Date cells row */}
-                <div style={{ display: 'flex' }}>
+                <div {...getStyles('dateCellsRow')}>
                   {visiblePeriods.map((period, index) => (
                     <Box
                       {...getStyles('dateCell')}
@@ -964,7 +920,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
               {getTodayPosition && (
                 <Box {...getStyles('todayLine')} style={{ left: getTodayPosition }} title="Today" />
               )}
-              <div style={{ width: totalWidth, position: 'relative', height: '100%' }}>
+              <div {...getStyles('tasksContainer')} style={{ width: totalWidth }}>
                 {data.map((d) => (
                   <Box {...getStyles('taskLine')} key={d.id}>
                     <Box {...getStyles('task')} style={getTaskStyle(d)}>
@@ -977,15 +933,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
             {/* Loading indicator for right shifting */}
             {isShifting && scrollDirection === 'right' && (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: '0.5rem',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  zIndex: 10,
-                }}
-              >
+              <div {...getStyles('loadingIndicator')} {...getStyles('loadingIndicatorRight')}>
                 <Loader size="sm" />
               </div>
             )}
