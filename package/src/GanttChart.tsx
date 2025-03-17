@@ -548,11 +548,28 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       // Use setTimeout instead of requestAnimationFrame to avoid potential timing issues
       setTimeout(() => {
         if (containerRef.current) {
-          const periodWidthPx = periodConfig.width * 16;
-          const targetPosition = Math.max(
-            0,
-            todayIndex * periodWidthPx - containerRef.current.clientWidth / 2
-          );
+          // Calculate the exact position of today's line
+          // Find the proportion of the day passed
+          let exactPosition;
+
+          // Find the closest period after today
+          const nextPeriodIndex = todayIndex + 1;
+          if (nextPeriodIndex < newPeriods.length) {
+            const beforeTime = newPeriods[todayIndex].getTime();
+            const afterTime = newPeriods[nextPeriodIndex].getTime();
+            const totalTimeDiff = afterTime - beforeTime;
+            const currentTimeDiff = today.getTime() - beforeTime;
+
+            // Calculate proportion of the way between periods (0 to 1)
+            const proportion = totalTimeDiff > 0 ? currentTimeDiff / totalTimeDiff : 0;
+
+            // Calculate the exact position
+            exactPosition = (todayIndex + proportion) * periodConfig.width * 16; // convert to pixels
+          } else {
+            exactPosition = todayIndex * periodConfig.width * 16;
+          }
+
+          const targetPosition = Math.max(0, exactPosition - containerRef.current.clientWidth / 2);
 
           containerRef.current.scrollLeft = targetPosition;
 
@@ -565,11 +582,29 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       }, 0);
     } else {
       // Today is already in view, just scroll to it
-      const periodWidthPx = periodConfig.width * 16;
-      const targetPosition = Math.max(
-        0,
-        todayIndex * periodWidthPx - containerRef.current.clientWidth / 2
-      );
+      // But center on the exact today position, not just the period
+
+      // Find the proportion of the current period
+      let exactPosition;
+
+      // Find the closest period after today
+      const nextPeriodIndex = todayIndex + 1;
+      if (nextPeriodIndex < allPeriods.length) {
+        const beforeTime = allPeriods[todayIndex].getTime();
+        const afterTime = allPeriods[nextPeriodIndex].getTime();
+        const totalTimeDiff = afterTime - beforeTime;
+        const currentTimeDiff = today.getTime() - beforeTime;
+
+        // Calculate proportion of the way between periods (0 to 1)
+        const proportion = totalTimeDiff > 0 ? currentTimeDiff / totalTimeDiff : 0;
+
+        // Calculate the exact position
+        exactPosition = (todayIndex + proportion) * periodConfig.width * 16; // convert to pixels
+      } else {
+        exactPosition = todayIndex * periodConfig.width * 16;
+      }
+
+      const targetPosition = Math.max(0, exactPosition - containerRef.current.clientWidth / 2);
 
       containerRef.current.scrollLeft = targetPosition;
 
