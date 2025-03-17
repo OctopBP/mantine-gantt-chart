@@ -631,43 +631,93 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return null;
     }
 
-    // Align today according to scale
-    const alignedToday = periodConfig.alignDate(today);
+    // Find the period before and after the current time
+    let beforeIndex = -1;
+    let afterIndex = -1;
 
-    // Find closest period to today
-    let todayIndex = allPeriods.findIndex((period) =>
-      periodConfig.isPeriodExactMatch(period, alignedToday)
-    );
+    // Find the exact period that contains today or the periods before/after today
+    for (let i = 0; i < allPeriods.length - 1; i++) {
+      const currentPeriod = allPeriods[i];
+      const nextPeriod = allPeriods[i + 1];
 
-    // If not found with exact match, try to find the closest period
-    if (todayIndex === -1) {
-      // Find periods that are on the same day for current scale
-      const relevantPeriods = allPeriods.filter((period) =>
-        periodConfig.isPeriodOnSameDay(period, today)
-      );
-
-      if (relevantPeriods.length > 0) {
-        // Get the closest period based on time difference
-        let closestPeriod = relevantPeriods[0];
-        let minDiff = Math.abs(closestPeriod.getTime() - today.getTime());
-
-        relevantPeriods.forEach((period) => {
-          const diff = Math.abs(period.getTime() - today.getTime());
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestPeriod = period;
-          }
-        });
-
-        todayIndex = allPeriods.indexOf(closestPeriod);
+      if (today.getTime() >= currentPeriod.getTime() && today.getTime() < nextPeriod.getTime()) {
+        beforeIndex = i;
+        afterIndex = i + 1;
+        break;
       }
     }
 
-    if (todayIndex === -1) {
-      return null;
+    // If we couldn't find surrounding periods directly, get the closest period
+    if (beforeIndex === -1) {
+      // Align today according to scale for initial search
+      const alignedToday = periodConfig.alignDate(today);
+
+      // Find closest period to today
+      let todayIndex = allPeriods.findIndex((period) =>
+        periodConfig.isPeriodExactMatch(period, alignedToday)
+      );
+
+      // If not found with exact match, try to find the closest period
+      if (todayIndex === -1) {
+        // Find periods that are on the same day for current scale
+        const relevantPeriods = allPeriods.filter((period) =>
+          periodConfig.isPeriodOnSameDay(period, today)
+        );
+
+        if (relevantPeriods.length > 0) {
+          // Get the closest period based on time difference
+          let closestPeriod = relevantPeriods[0];
+          let minDiff = Math.abs(closestPeriod.getTime() - today.getTime());
+
+          relevantPeriods.forEach((period) => {
+            const diff = Math.abs(period.getTime() - today.getTime());
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestPeriod = period;
+            }
+          });
+
+          todayIndex = allPeriods.indexOf(closestPeriod);
+        }
+      }
+
+      if (todayIndex === -1) {
+        return null;
+      }
+
+      // If closest period is after today
+      if (allPeriods[todayIndex].getTime() > today.getTime()) {
+        if (todayIndex > 0) {
+          beforeIndex = todayIndex - 1;
+          afterIndex = todayIndex;
+        } else {
+          // At the very beginning of the timeline
+          return `0rem`;
+        }
+      }
+      // If closest period is before today
+      else if (todayIndex < allPeriods.length - 1) {
+        beforeIndex = todayIndex;
+        afterIndex = todayIndex + 1;
+      } else {
+        // At the very end of the timeline
+        return `${(allPeriods.length - 1) * periodConfig.width}rem`;
+      }
     }
 
-    return `${todayIndex * periodConfig.width}rem`;
+    // Calculate the exact position based on time proportion
+    const beforeTime = allPeriods[beforeIndex].getTime();
+    const afterTime = allPeriods[afterIndex].getTime();
+    const totalTimeDiff = afterTime - beforeTime;
+    const currentTimeDiff = today.getTime() - beforeTime;
+
+    // Calculate proportion of the way between periods (0 to 1)
+    const proportion = totalTimeDiff > 0 ? currentTimeDiff / totalTimeDiff : 0;
+
+    // Calculate the exact position
+    const exactPosition = beforeIndex * periodConfig.width + proportion * periodConfig.width;
+
+    return `${exactPosition}rem`;
   }, [allPeriods, periodConfig]);
 
   return (
