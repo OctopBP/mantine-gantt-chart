@@ -156,14 +156,17 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Initialize the fixed-size window of periods when scale changes
   useEffect(() => {
-    // Generate fixed number of periods centered around the centerDate
+    // Align center date according to scale first
+    const alignedCenterDate = periodConfig.alignDate(centerDate);
+
+    // Generate fixed number of periods centered around the alignedCenterDate
     const periods: Date[] = [];
 
     // Calculate half to put before and after center
     const halfCount = Math.floor(TOTAL_PERIODS / 2);
 
     // Generate periods before the center date
-    let tempDate = new Date(centerDate);
+    let tempDate = new Date(alignedCenterDate);
     for (let i = 0; i < halfCount; i++) {
       // Go backwards by subtracting the increment
       tempDate = add(tempDate, {
@@ -177,10 +180,10 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     }
 
     // Add the center date
-    periods.push(new Date(centerDate));
+    periods.push(new Date(alignedCenterDate));
 
     // Generate periods after the center date
-    tempDate = new Date(centerDate);
+    tempDate = new Date(alignedCenterDate);
     for (let i = 0; i < halfCount - 1; i++) {
       tempDate = add(tempDate, periodConfig.increment);
       periods.push(new Date(tempDate));
