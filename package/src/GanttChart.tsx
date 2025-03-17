@@ -772,42 +772,65 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       </Box>
 
       <Box {...getStyles('main')}>
-        <Box {...getStyles('controls')}>
-          <Text>
-            {allPeriods.length > 0 ? format(allPeriods[0], periodConfig.headerFormat) : ''}
-            {' - '}
-            {allPeriods.length > 0
-              ? format(allPeriods[allPeriods.length - 1], periodConfig.headerFormat)
-              : ''}
-          </Text>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Button
-              variant="transparent"
-              size="compact-sm"
-              color="gray"
-              onClick={scrollToToday}
-              aria-label="Scroll to today"
-            >
-              Today
-            </Button>
-            <Select
-              variant="unstyled"
-              data={SCALE_OPTIONS}
-              value={scale}
-              w="6.5rem"
-              onChange={(value) => {
-                if (value) {
-                  const newScale = value as PeriodScale;
-                  if (onScaleChange) {
-                    onScaleChange(newScale);
-                  } else {
-                    setInternalScale(newScale);
+        {/* Controls with height 0 to overlay without taking space */}
+        <Box
+          {...getStyles('controls')}
+          style={{
+            height: 0,
+            overflow: 'visible',
+            position: 'relative',
+            zIndex: 100,
+            width: '100%',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: '0.75rem',
+              right: '0.25rem',
+              top: '0.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Text>
+              {allPeriods.length > 0 ? format(allPeriods[0], periodConfig.headerFormat) : ''}
+              {' - '}
+              {allPeriods.length > 0
+                ? format(allPeriods[allPeriods.length - 1], periodConfig.headerFormat)
+                : ''}
+            </Text>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Button
+                variant="transparent"
+                size="compact-sm"
+                color="gray"
+                onClick={scrollToToday}
+                aria-label="Scroll to today"
+              >
+                Today
+              </Button>
+              <Select
+                variant="unstyled"
+                data={SCALE_OPTIONS}
+                value={scale}
+                w="6.5rem"
+                onChange={(value) => {
+                  if (value) {
+                    const newScale = value as PeriodScale;
+                    if (onScaleChange) {
+                      onScaleChange(newScale);
+                    } else {
+                      setInternalScale(newScale);
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
         </Box>
+
         <Box
           {...getStyles('scrollArea')}
           ref={containerRef}
