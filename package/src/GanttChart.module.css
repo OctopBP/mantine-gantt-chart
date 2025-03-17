@@ -48,7 +48,7 @@
 }
 
 .dates {
-  height: 1.75rem;
+  height: 4.25rem;
   white-space: nowrap;
   flex-shrink: 0;
   border-bottom: 1px solid var(--mantine-color-dark-4);
@@ -63,9 +63,6 @@
   display: inline-block;
   text-align: center;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* Mark type styles for date cells */
@@ -79,6 +76,19 @@
 
 [data-mantine-color-scheme='dark'] .dateCell[data-mark-type='weekend'] {
   color: var(--mantine-color-red-4);
+}
+
+.periodHeader {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--mantine-color-dark-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.25rem;
 }
 
 .tasksView {

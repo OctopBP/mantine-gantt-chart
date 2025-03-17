@@ -14,6 +14,7 @@ export type GanttChartStylesNames =
   | 'controls'
   | 'dates'
   | 'dateCell'
+  | 'periodHeader'
   | 'tasksView'
   | 'tableCell'
   | 'task'
@@ -840,10 +841,74 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                   position: 'absolute',
                   left: periodsOffset,
                   display: 'flex',
+                  flexDirection: 'column',
+                  width: '100%',
                 }}
               >
-                {visiblePeriods.map((period, index) => {
-                  return (
+                {/* Period headers row */}
+                <div
+                  style={{
+                    display: 'flex',
+                    height: '1.5rem',
+                    marginBottom: '0.25rem',
+                    position: 'relative',
+                  }}
+                >
+                  {(() => {
+                    // Group periods by their group key (e.g., month or year)
+                    const groups: {
+                      key: string;
+                      periods: Date[];
+                      displayName: string;
+                      startIndex: number;
+                    }[] = [];
+
+                    // Process all visible periods
+                    visiblePeriods.forEach((period, index) => {
+                      const groupKey = periodConfig.getGroupKey(period);
+                      const existingGroup = groups.find((g) => g.key === groupKey);
+
+                      if (existingGroup) {
+                        // Add to existing group
+                        existingGroup.periods.push(period);
+                      } else {
+                        // Create new group
+                        groups.push({
+                          key: groupKey,
+                          periods: [period],
+                          displayName: format(period, periodConfig.periodHeaderFormat),
+                          startIndex: index,
+                        });
+                      }
+                    });
+
+                    // Render the group headers
+                    return groups.map((group) => {
+                      const width = group.periods.length * periodConfig.width;
+
+                      return (
+                        <div
+                          key={group.key}
+                          style={{
+                            position: 'absolute',
+                            left: `${group.startIndex * periodConfig.width}rem`,
+                            width: `${width}rem`,
+                            height: '100%',
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <div {...getStyles('periodHeader')}>{group.displayName}</div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* Date cells row */}
+                <div style={{ display: 'flex' }}>
+                  {visiblePeriods.map((period, index) => (
                     <Box
                       {...getStyles('dateCell')}
                       key={index}
@@ -854,8 +919,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                     >
                       <span>{formatPeriodLabel(period)}</span>
                     </Box>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </Box>
             <Box {...getStyles('tasksView')}>

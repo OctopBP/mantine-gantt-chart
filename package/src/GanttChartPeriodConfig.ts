@@ -33,6 +33,12 @@ export interface PeriodConfig {
    */
   headerFormat: string;
 
+  /**
+   * Format string for the period header that appears above certain dates
+   * @see https://date-fns.org/v4.1.0/docs/format
+   */
+  periodHeaderFormat: string;
+
   /** Base increment for a single period */
   increment: Duration;
 
@@ -59,6 +65,18 @@ export interface PeriodConfig {
    * E.g., for hours scale, align to 15-minute intervals
    */
   alignDate: (date: Date) => Date;
+
+  /**
+   * Function to determine if a period should show the period header
+   * For example, for hours scale, show date for 1 AM periods
+   */
+  shouldShowPeriodHeader: (period: Date) => boolean;
+
+  /**
+   * Function to get a key for grouping periods
+   * For example, for 'day' scale, group by day or for 'month' scale, group by month
+   */
+  getGroupKey: (period: Date) => string;
 }
 
 // Helper function to check if a date is a weekend
@@ -72,6 +90,7 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
     width: 6,
     labelFormat: 'h:mm a',
     headerFormat: 'MMMM d, yyyy',
+    periodHeaderFormat: 'MMMM d',
     increment: { minutes: 15 },
     getMarkType: (date: Date) => {
       // Full hours are major marks, other 15-minute intervals are minor
@@ -98,11 +117,20 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setMinutes(roundedMinutes, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for 1 AM (beginning of the day)
+      return period.getHours() === 1 && period.getMinutes() === 0;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by day for hours scale
+      return `${period.getFullYear()}-${period.getMonth()}-${period.getDate()}`;
+    },
   },
   day: {
     width: 3,
     labelFormat: 'h a', // e.g., "10 AM"
     headerFormat: 'MMMM d, yyyy',
+    periodHeaderFormat: 'MMMM d',
     increment: { hours: 1 },
     getMarkType: (_date: Date) => 'major',
     isPeriodExactMatch: (period: Date, date: Date) => {
@@ -123,11 +151,20 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setMinutes(0, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header at midnight (beginning of the day)
+      return period.getHours() === 0;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by day for day scale
+      return `${period.getFullYear()}-${period.getMonth()}-${period.getDate()}`;
+    },
   },
   week: {
     width: 7,
     labelFormat: 'd', // Day of month
     headerFormat: 'MMMM yyyy',
+    periodHeaderFormat: 'MMMM',
     increment: { days: 1 },
     getMarkType: (date: Date) => (dateFnsIsWeekend(date) ? 'weekend' : 'major'),
     isPeriodExactMatch: (period: Date, date: Date) => {
@@ -143,11 +180,20 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setHours(0, 0, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for the first day of each month
+      return period.getDate() === 1;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by month for week scale
+      return `${period.getFullYear()}-${period.getMonth()}`;
+    },
   },
   'bi-week': {
     width: 3.5,
     labelFormat: 'd.M', // Day of month
     headerFormat: 'MMMM yyyy',
+    periodHeaderFormat: 'MMMM',
     increment: { days: 1 },
     getMarkType: (date: Date) => (dateFnsIsWeekend(date) ? 'weekend' : 'major'),
     isPeriodExactMatch: (period: Date, date: Date) => {
@@ -163,11 +209,20 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setHours(0, 0, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for the first day of each month
+      return period.getDate() === 1;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by month for bi-week scale
+      return `${period.getFullYear()}-${period.getMonth()}`;
+    },
   },
   month: {
     width: 1.75,
     labelFormat: 'd', // Day of month
     headerFormat: 'MMMM yyyy',
+    periodHeaderFormat: 'MMMM',
     increment: { days: 1 },
     getMarkType: (date: Date) => (dateFnsIsWeekend(date) ? 'weekend' : 'major'),
     isPeriodExactMatch: (period: Date, date: Date) => {
@@ -183,11 +238,20 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setHours(0, 0, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for the first day of each month
+      return period.getDate() === 1;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by month for month scale
+      return `${period.getFullYear()}-${period.getMonth()}`;
+    },
   },
   quarter: {
     width: 4.5,
     labelFormat: 'd', // Week number
     headerFormat: 'MMMM yyyy',
+    periodHeaderFormat: 'MMMM',
     increment: { days: 7 },
     getMarkType: (_date: Date) => 'major',
     isPeriodExactMatch: (period: Date, date: Date) => {
@@ -209,11 +273,21 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setHours(0, 0, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for the first week of each month
+      // Check if this is the first week that contains a day from this month
+      return period.getDate() <= 7;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by month for quarter scale
+      return `${period.getFullYear()}-${period.getMonth()}`;
+    },
   },
   year: {
     width: 2,
     labelFormat: 'd', // Week number
     headerFormat: 'MMMM yyyy',
+    periodHeaderFormat: 'MMMM',
     increment: { days: 7 },
     getMarkType: (_date: Date) => 'major',
     isPeriodExactMatch: (period: Date, date: Date) => {
@@ -235,11 +309,21 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setHours(0, 0, 0, 0);
       return newDate;
     },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for the first week of each month
+      // Check if this is the first week that contains a day from this month
+      return period.getDate() <= 7;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by month for year scale
+      return `${period.getFullYear()}-${period.getMonth()}`;
+    },
   },
   '5-years': {
     width: 2,
     labelFormat: 'M', // Short month name
     headerFormat: 'yyyy', // Year
+    periodHeaderFormat: 'yyyy',
     increment: { months: 1 },
     getMarkType: (date: Date) => {
       return getMonth(date) === 0 ? 'major' : 'minor'; // January is month 0
@@ -257,6 +341,14 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
       newDate.setDate(1);
       newDate.setHours(0, 0, 0, 0);
       return newDate;
+    },
+    shouldShowPeriodHeader: (period: Date) => {
+      // Show period header for January (beginning of the year)
+      return period.getMonth() === 0;
+    },
+    getGroupKey: (period: Date) => {
+      // Group by year for 5-years scale
+      return `${period.getFullYear()}`;
     },
   },
 };
