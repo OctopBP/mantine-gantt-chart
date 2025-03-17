@@ -54,12 +54,14 @@
   font-size: var(--mantine-font-size-md);
   color: var(--mantine-color-dimmed);
   white-space: nowrap;
+  background: var(--mantine-color-body);
 }
 
 .controlActions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  background: var(--mantine-color-body);
 }
 
 .scrollArea {
