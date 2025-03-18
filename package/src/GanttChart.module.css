@@ -132,6 +132,12 @@
   height: 100%;
 }
 
+/* Offset time-based labels to appear above the dividing lines */
+.dateCell[data-scale='hours'],
+.dateCell[data-scale='day'] {
+  transform: translateX(-50%);
+}
+
 /* Mark type styles for date cells */
 .dateCell[data-mark-type='weekend'] {
   color: var(--mantine-color-red-filled);
