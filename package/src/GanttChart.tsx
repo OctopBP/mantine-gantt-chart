@@ -788,10 +788,12 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         <Box {...getStyles('controls')}>
           <div {...getStyles('controlsContainer')}>
             <div {...getStyles('periodInfo')}>
-              {allPeriods.length > 0 ? format(allPeriods[0], periodConfig.headerFormat) : ''}
-              {' - '}
-              {allPeriods.length > 0
-                ? format(allPeriods[allPeriods.length - 1], periodConfig.headerFormat)
+              {visibleRange.startIndex < allPeriods.length &&
+              allPeriods[Math.max(0, visibleRange.startIndex)]
+                ? format(
+                    allPeriods[Math.max(0, visibleRange.startIndex)],
+                    periodConfig.headerFormat
+                  )
                 : ''}
             </div>
             <div {...getStyles('controlActions')}>

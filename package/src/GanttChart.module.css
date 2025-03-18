@@ -8,7 +8,8 @@
 }
 
 .table {
-  padding-top: 4rem;
+  /* 1px for borders, to align with the dates row */
+  padding-top: calc(4rem - 1px);
   min-width: 12rem;
   height: 100%;
   overflow: hidden;
@@ -43,25 +44,35 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 0.25rem;
+  top: 0;
+  height: 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--mantine-spacing-sm);
 }
 
 .periodInfo {
+  font-weight: var(--mantine-font-weight-bold);
   font-size: var(--mantine-font-size-md);
   color: var(--mantine-color-dimmed);
   white-space: nowrap;
-  background: var(--mantine-color-body);
+  background: linear-gradient(
+    to right,
+    var(--mantine-color-body) calc(100% - 1.5rem),
+    transparent 100%
+  );
+  padding-left: var(--mantine-spacing-sm);
+  padding-right: 1.5rem;
+  align-content: center;
+  height: 100%;
 }
 
 .controlActions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--mantine-color-body);
+  padding-left: 1.5rem;
+  background: linear-gradient(to right, transparent, var(--mantine-color-body) 1.5rem);
 }
 
 .scrollArea {
@@ -76,7 +87,7 @@
 }
 
 .dates {
-  height: 4.25rem;
+  height: 4rem;
   white-space: nowrap;
   flex-shrink: 0;
   border-bottom: 1px solid var(--mantine-color-dark-4);
@@ -91,13 +102,13 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  height: 4rem;
 }
 
 .periodHeadersRow {
   display: flex;
-  height: 1.5rem;
-  margin-bottom: 0.25rem;
   position: relative;
+  height: 2rem;
 }
 
 .periodHeaderGroup {
@@ -110,12 +121,14 @@
 
 .dateCellsRow {
   display: flex;
+  height: 2rem;
 }
 
 .dateCell {
   width: 2rem;
   display: inline-block;
   text-align: center;
+  align-content: center;
   height: 100%;
 }
 
@@ -136,9 +149,9 @@
   display: block;
   width: 100%;
   text-align: left;
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--mantine-color-dark-2);
+  font-weight: var(--mantine-font-weight-bold);
+  font-size: var(--mantine-font-size-md);
+  color: var(--mantine-color-dimmed);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
