@@ -1,11 +1,24 @@
-import { add, format } from 'date-fns'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { IconTarget } from '@tabler/icons-react';
+import { add, format } from 'date-fns';
 import {
-    Box, BoxProps, Button, createVarsResolver, ElementProps, factory, Factory, Loader, MantineColor,
-    Select, StylesApiProps, useProps, useStyles
-} from '@mantine/core'
-import classes from './GanttChart.module.css'
-import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig'
+  ActionIcon,
+  Box,
+  BoxProps,
+  Button,
+  createVarsResolver,
+  ElementProps,
+  factory,
+  Factory,
+  Loader,
+  MantineColor,
+  Select,
+  StylesApiProps,
+  useProps,
+  useStyles,
+} from '@mantine/core';
+import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig';
+import classes from './GanttChart.module.css';
 
 export type GanttChartStylesNames =
   | 'root'
@@ -39,7 +52,9 @@ export type GanttChartStylesNames =
   | 'todayLine'
   | 'loadingIndicator'
   | 'loadingIndicatorLeft'
-  | 'loadingIndicatorRight';
+  | 'loadingIndicatorRight'
+  | 'scrollToTaskButton'
+  | 'taskName';
 
 export type GanttChartCssVariables = {};
 
@@ -771,13 +786,42 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     return `${exactPosition}rem`;
   }, [allPeriods, periodConfig]);
 
+  // Add scroll to task function
+  const scrollToTask = useCallback(
+    (task: GanttChartData) => {
+      if (!containerRef.current) {
+        return;
+      }
+
+      const taskStyle = getTaskStyle(task);
+      if (taskStyle.display === 'none') {
+        return;
+      }
+
+      const taskLeft = parseFloat(taskStyle.left as string);
+      // Convert rem to pixels (1rem = 16px)
+      const targetPosition = Math.max(0, (taskLeft - 1) * 16);
+
+      containerRef.current.scrollLeft = targetPosition;
+    },
+    [getTaskStyle]
+  );
+
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
       <Box {...getStyles('table')}>
         <Box>
           {data.map((d) => (
             <Box {...getStyles('tableCell')} key={d.id}>
-              {d.name}
+              <span {...getStyles('taskName')}>{d.name}</span>
+              <ActionIcon
+                variant="default"
+                size="sm"
+                onClick={() => scrollToTask(d)}
+                title="Scroll to task"
+              >
+                <IconTarget size={14} />
+              </ActionIcon>
             </Box>
           ))}
         </Box>
