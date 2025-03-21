@@ -899,11 +899,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           );
 
           if (taskStartIndex !== -1) {
-            // Calculate the target scroll position to center the task
-            const targetPosition = Math.max(
-              0,
-              taskStartIndex * periodWidthPx - containerWidth / 2 + periodWidthPx / 2
-            );
+            // Calculate the target scroll position to position task at left edge with one period offset
+            const targetPosition = Math.max(0, (taskStartIndex - 1) * periodWidthPx);
             containerRef.current.scrollLeft = targetPosition;
           }
 
