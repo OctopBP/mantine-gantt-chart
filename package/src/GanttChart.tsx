@@ -82,6 +82,9 @@ export interface GanttChartProps
 
   /** Called when scale changes */
   onScaleChange?: (scale: PeriodScale) => void;
+
+  /** Whether to show the table with task names on the left, defaults to true */
+  showTable?: boolean;
 }
 
 export type GanttChartFactory = Factory<{
@@ -94,6 +97,7 @@ export type GanttChartFactory = Factory<{
 const defaultProps: Partial<GanttChartProps> = {
   data: [],
   scale: 'day',
+  showTable: true,
 };
 
 const varsResolver = createVarsResolver<GanttChartFactory>(() => ({
@@ -124,6 +128,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     focusedDate,
     scale: externalScale,
     onScaleChange,
+    showTable,
     ...others
   } = props;
 
@@ -599,6 +604,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Calculate task position and width
   const getTaskStyle = (task: GanttChartData) => {
+    // If there are no periods, hide all tasks
+    if (allPeriods.length === 0) {
+      return {
+        display: 'none',
+      };
+    }
+
     // Find the first and last visible periods
     const firstVisiblePeriod = allPeriods[0];
     const lastVisiblePeriod = allPeriods[allPeriods.length - 1];
@@ -823,23 +835,25 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   return (
     <Box ref={ref} {...getStyles('root')} {...others}>
-      <Box {...getStyles('table')}>
-        <Box>
-          {data.map((d) => (
-            <Box {...getStyles('tableCell')} key={d.id}>
-              <span {...getStyles('taskName')}>{d.name}</span>
-              <ActionIcon
-                variant="default"
-                size="sm"
-                onClick={() => scrollToTask(d)}
-                title="Scroll to task"
-              >
-                <IconTarget size={14} />
-              </ActionIcon>
-            </Box>
-          ))}
+      {showTable && (
+        <Box {...getStyles('table')}>
+          <Box>
+            {data.map((d) => (
+              <Box {...getStyles('tableCell')} key={d.id}>
+                <span {...getStyles('taskName')}>{d.name}</span>
+                <ActionIcon
+                  variant="default"
+                  size="sm"
+                  onClick={() => scrollToTask(d)}
+                  title="Scroll to task"
+                >
+                  <IconTarget size={14} />
+                </ActionIcon>
+              </Box>
+            ))}
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <Box {...getStyles('main')}>
         {/* Controls with height 0 to overlay without taking space */}
