@@ -661,6 +661,17 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const getTaskStyle = (task: GanttChartData) => {
     const periodWidth = periodConfig.width;
 
+    // Find the first and last visible periods
+    const firstVisiblePeriod = allPeriods[0];
+    const lastVisiblePeriod = allPeriods[allPeriods.length - 1];
+
+    // If we don't have any periods, hide the task
+    if (!firstVisiblePeriod || !lastVisiblePeriod) {
+      return {
+        display: 'none',
+      };
+    }
+
     // Find the index of the period that contains the task start date
     const startIndex = allPeriods.findIndex((period) =>
       periodConfig.isPeriodExactMatch(period, task.start)
@@ -670,16 +681,53 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       periodConfig.isPeriodExactMatch(period, task.end)
     );
 
-    // If we couldn't find the period, return a style that hides the task
-    if (startIndex === -1 || endIndex === -1) {
+    // Calculate the actual start and end positions
+    let actualStartIndex = startIndex;
+    let actualEndIndex = endIndex;
+
+    // If task starts before first visible period
+    if (task.start < firstVisiblePeriod) {
+      actualStartIndex = 0;
+    }
+
+    // If task ends after last visible period
+    if (task.end > lastVisiblePeriod) {
+      actualEndIndex = allPeriods.length - 1;
+    }
+
+    // If task is completely outside visible range, hide it
+    if (actualStartIndex === -1 && actualEndIndex === -1) {
       return {
         display: 'none',
       };
     }
 
+    // If we couldn't find exact matches but the task overlaps with visible periods
+    if (actualStartIndex === -1 || actualEndIndex === -1) {
+      // Find the first period that overlaps with the task
+      const firstOverlapIndex = allPeriods.findIndex(
+        (period) => period.getTime() <= task.end.getTime()
+      );
+
+      // Find the last period that overlaps with the task
+      const lastOverlapIndex = allPeriods.findLastIndex(
+        (period) => period.getTime() >= task.start.getTime()
+      );
+
+      if (firstOverlapIndex !== -1 && lastOverlapIndex !== -1) {
+        actualStartIndex = firstOverlapIndex;
+        actualEndIndex = lastOverlapIndex;
+      } else {
+        return {
+          display: 'none',
+        };
+      }
+    }
+
+    // Calculate the style object
     return {
-      left: `${startIndex * periodWidth}rem`,
-      width: `${(endIndex - startIndex + 1) * periodWidth}rem`,
+      left: `${actualStartIndex * periodWidth}rem`,
+      width: `${(actualEndIndex - actualStartIndex + 1) * periodWidth}rem`,
     };
   };
 
@@ -793,18 +841,81 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         return;
       }
 
-      const taskStyle = getTaskStyle(task);
-      if (taskStyle.display === 'none') {
-        return;
+      const periodWidthPx = periodConfig.width * 16; // convert rem to px
+      const containerWidth = containerRef.current.clientWidth;
+
+      // Start loading indicator
+      setIsShifting(true);
+      setScrollDirection(null);
+
+      // Generate new periods centered around the task
+      const newPeriods: Date[] = [];
+      const halfCount = Math.floor(TOTAL_PERIODS / 2);
+
+      // Use the task's start date as the center
+      const centerDate = periodConfig.alignDate(task.start);
+
+      // Generate periods before the task start
+      let tempDate = new Date(centerDate);
+      for (let i = 0; i < halfCount; i++) {
+        tempDate = add(tempDate, {
+          ...periodConfig.increment,
+          ...{
+            [Object.keys(periodConfig.increment)[0]]: -Object.values(periodConfig.increment)[0],
+          },
+        });
+        newPeriods.unshift(new Date(tempDate));
       }
 
-      const taskLeft = parseFloat(taskStyle.left as string);
-      // Convert rem to pixels (1rem = 16px)
-      const targetPosition = Math.max(0, (taskLeft - 1) * 16);
+      // Add the center date and future periods
+      newPeriods.push(new Date(centerDate));
+      tempDate = new Date(centerDate);
 
-      containerRef.current.scrollLeft = targetPosition;
+      for (let i = 0; i < halfCount - 1; i++) {
+        tempDate = add(tempDate, periodConfig.increment);
+        newPeriods.push(new Date(tempDate));
+      }
+
+      // Reset virtual offset and update state
+      virtualOffsetRef.current = 0;
+      setAllPeriods(newPeriods);
+
+      // Update visible range
+      const visibleCount = Math.ceil(containerWidth / periodWidthPx);
+      const startIndex = Math.max(0, halfCount - Math.floor(visibleCount / 2));
+      const endIndex = halfCount + Math.ceil(visibleCount / 2);
+
+      setVisibleRange({
+        startIndex,
+        endIndex,
+      });
+
+      // After the state update, scroll to the task
+      setTimeout(() => {
+        if (containerRef.current) {
+          // Find the task's position in the new periods
+          const taskStartIndex = newPeriods.findIndex((period) =>
+            periodConfig.isPeriodExactMatch(period, task.start)
+          );
+
+          if (taskStartIndex !== -1) {
+            // Calculate the target scroll position to center the task
+            const targetPosition = Math.max(
+              0,
+              taskStartIndex * periodWidthPx - containerWidth / 2 + periodWidthPx / 2
+            );
+            containerRef.current.scrollLeft = targetPosition;
+          }
+
+          // Reset loading state after a small delay
+          setTimeout(() => {
+            setIsShifting(false);
+            setScrollDirection(null);
+          }, 50);
+        }
+      }, 0);
     },
-    [getTaskStyle]
+    [periodConfig, TOTAL_PERIODS, setIsShifting, setScrollDirection, setAllPeriods, setVisibleRange]
   );
 
   return (
