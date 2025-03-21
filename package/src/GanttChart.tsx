@@ -723,7 +723,14 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
     // Calculate exact positions in rem units
     const startPosition = (startBeforeIndex + startProportion) * periodWidth;
-    const endPosition = (endBeforeIndex + endProportion) * periodWidth;
+
+    // If task ends after the last period, extend it to the end of the visible area
+    let endPosition;
+    if (task.end.getTime() > lastVisiblePeriod.getTime()) {
+      endPosition = allPeriods.length * periodWidth;
+    } else {
+      endPosition = (endBeforeIndex + endProportion) * periodWidth;
+    }
 
     // Calculate the style object
     return {
