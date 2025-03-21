@@ -10,7 +10,6 @@ import {
   ElementProps,
   factory,
   Factory,
-  Loader,
   MantineColor,
   Select,
   StylesApiProps,
@@ -131,15 +130,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   // Constants for chart configuration
   const TOTAL_PERIODS = 200; // Fixed total number of periods to maintain
   const VISIBLE_BUFFER = 50; // Extra items to render on each side of visible area
-  const SCROLL_THRESHOLD = 0.2; // When to shift the window (20% from edge)
+  const SCROLL_THRESHOLD = 0.1; // When to shift the window (10% from edge)
   const PERIODS_TO_SHIFT = 100; // Number of periods to shift when reaching threshold
 
   const [scale, setInternalScale] = useState<PeriodScale>(externalScale || 'day');
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 50 });
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [scrollDirection, setScrollDirection] = useState<'left' | 'right' | null>(null);
-  const [isShifting, setIsShifting] = useState(false);
   const lastScrollLeft = useRef(0);
   const isInitialRender = useRef(true);
 
@@ -260,11 +257,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Shift window to the left (show earlier dates)
   const shiftWindowLeft = useCallback(() => {
-    if (isShifting) {
-      return;
-    }
-    setIsShifting(true);
-
     setAllPeriods((prevPeriods) => {
       // Check if we have periods to work with
       if (prevPeriods.length === 0) {
@@ -318,19 +310,12 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           startIndex: prev.startIndex + PERIODS_TO_SHIFT,
           endIndex: prev.endIndex + PERIODS_TO_SHIFT,
         }));
-
-        setIsShifting(false);
       }
     }, 0);
-  }, [isShifting, periodConfig]);
+  }, [periodConfig]);
 
   // Shift window to the right (show later dates)
   const shiftWindowRight = useCallback(() => {
-    if (isShifting) {
-      return;
-    }
-    setIsShifting(true);
-
     setAllPeriods((prevPeriods) => {
       // Check if we have periods to work with
       if (prevPeriods.length === 0) {
@@ -379,15 +364,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           startIndex: prev.startIndex - PERIODS_TO_SHIFT,
           endIndex: prev.endIndex - PERIODS_TO_SHIFT,
         }));
-
-        setIsShifting(false);
       }
     }, 0);
-  }, [isShifting, periodConfig]);
+  }, [periodConfig]);
 
   // Update visible range on scroll
   const handleScroll = useCallback(() => {
-    if (!containerRef.current || isShifting || isInitialRender.current) {
+    if (!containerRef.current || isInitialRender.current) {
       return;
     }
 
@@ -400,13 +383,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     const containerWidth = containerRef.current.clientWidth;
     const periodWidthPx = periodConfig.width * 16; // convert rem to px
     const totalWidthPx = allPeriods.length * periodWidthPx;
-
-    // Determine scroll direction
-    if (scrollLeft > lastScrollLeft.current) {
-      setScrollDirection('right');
-    } else if (scrollLeft < lastScrollLeft.current) {
-      setScrollDirection('left');
-    }
 
     // Update last scroll position
     lastScrollLeft.current = scrollLeft;
@@ -424,11 +400,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       return;
     }
 
-    // Set a timeout to debounce scroll updates
-    scrollTimeout.current = setTimeout(() => {
-      setScrollDirection(null);
-    }, 150);
-
     // Update visible range based on scroll position
     const startIndex = Math.floor(scrollLeft / periodWidthPx);
     const visiblePeriods = Math.ceil(containerWidth / periodWidthPx);
@@ -437,24 +408,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       startIndex,
       endIndex: startIndex + visiblePeriods,
     });
-  }, [
-    periodConfig.width,
-    allPeriods.length,
-    isShifting,
-    shiftWindowLeft,
-    shiftWindowRight,
-    SCROLL_THRESHOLD,
-  ]);
+  }, [periodConfig.width, allPeriods.length, shiftWindowLeft, shiftWindowRight, SCROLL_THRESHOLD]);
 
   // Scroll to today
   const scrollToToday = useCallback(() => {
     if (!containerRef.current) {
       return;
     }
-
-    // Start loading indicator
-    setIsShifting(true);
-    setScrollDirection(null);
 
     const today = new Date();
 
@@ -600,12 +560,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
           const targetPosition = Math.max(0, exactPosition - containerRef.current.clientWidth / 2);
 
           containerRef.current.scrollLeft = targetPosition;
-
-          // Reset loading state after a small delay to ensure scrolling is complete
-          setTimeout(() => {
-            setIsShifting(false);
-            setScrollDirection(null);
-          }, 50);
         }
       }, 0);
     } else {
@@ -635,22 +589,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       const targetPosition = Math.max(0, exactPosition - containerRef.current.clientWidth / 2);
 
       containerRef.current.scrollLeft = targetPosition;
-
-      // Reset loading state
-      setTimeout(() => {
-        setIsShifting(false);
-        setScrollDirection(null);
-      }, 50);
     }
-  }, [
-    allPeriods,
-    periodConfig,
-    TOTAL_PERIODS,
-    setIsShifting,
-    setScrollDirection,
-    setAllPeriods,
-    setVisibleRange,
-  ]);
+  }, [allPeriods, periodConfig, TOTAL_PERIODS, setAllPeriods, setVisibleRange]);
 
   // Format period label using the config
   const formatPeriodLabel = (date: Date) => {
@@ -888,10 +828,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       const periodWidthPx = periodConfig.width * 16; // convert rem to px
       const containerWidth = containerRef.current.clientWidth;
 
-      // Start loading indicator
-      setIsShifting(true);
-      setScrollDirection(null);
-
       // Generate new periods centered around the task
       const newPeriods: Date[] = [];
       const halfCount = Math.floor(TOTAL_PERIODS / 2);
@@ -947,16 +883,10 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             const targetPosition = Math.max(0, (taskStartIndex - 1) * periodWidthPx);
             containerRef.current.scrollLeft = targetPosition;
           }
-
-          // Reset loading state after a small delay
-          setTimeout(() => {
-            setIsShifting(false);
-            setScrollDirection(null);
-          }, 50);
         }
       }, 0);
     },
-    [periodConfig, TOTAL_PERIODS, setIsShifting, setScrollDirection, setAllPeriods, setVisibleRange]
+    [periodConfig, TOTAL_PERIODS, setAllPeriods, setVisibleRange]
   );
 
   return (
@@ -1024,13 +954,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
         <Box {...getStyles('scrollArea')} ref={containerRef} onScroll={handleScroll}>
           <div {...getStyles('chartContent')} style={{ width: totalWidth }}>
-            {/* Loading indicator for left shifting */}
-            {isShifting && scrollDirection === 'left' && (
-              <div {...getStyles('loadingIndicator')} {...getStyles('loadingIndicatorLeft')}>
-                <Loader size="sm" />
-              </div>
-            )}
-
             <Box {...getStyles('dates')}>
               <div {...getStyles('datesContainer')} style={{ left: periodsOffset }}>
                 {/* Period headers row */}
@@ -1128,13 +1051,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                 ))}
               </div>
             </Box>
-
-            {/* Loading indicator for right shifting */}
-            {isShifting && scrollDirection === 'right' && (
-              <div {...getStyles('loadingIndicator')} {...getStyles('loadingIndicatorRight')}>
-                <Loader size="sm" />
-              </div>
-            )}
           </div>
         </Box>
       </Box>
