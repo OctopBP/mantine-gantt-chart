@@ -672,62 +672,106 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       };
     }
 
-    // Find the index of the period that contains the task start date
-    const startIndex = allPeriods.findIndex((period) =>
-      periodConfig.isPeriodExactMatch(period, task.start)
-    );
+    // Find the periods before and after the task start
+    let startBeforeIndex = -1;
+    let startAfterIndex = -1;
+    let endBeforeIndex = -1;
+    let endAfterIndex = -1;
 
-    const endIndex = allPeriods.findIndex((period) =>
-      periodConfig.isPeriodExactMatch(period, task.end)
-    );
+    // Find surrounding periods for start date
+    for (let i = 0; i < allPeriods.length - 1; i++) {
+      const currentPeriod = allPeriods[i];
+      const nextPeriod = allPeriods[i + 1];
 
-    // Calculate the actual start and end positions
-    let actualStartIndex = startIndex;
-    let actualEndIndex = endIndex;
-
-    // If task starts before first visible period
-    if (task.start < firstVisiblePeriod) {
-      actualStartIndex = 0;
-    }
-
-    // If task ends after last visible period
-    if (task.end > lastVisiblePeriod) {
-      actualEndIndex = allPeriods.length - 1;
-    }
-
-    // If task is completely outside visible range, hide it
-    if (actualStartIndex === -1 && actualEndIndex === -1) {
-      return {
-        display: 'none',
-      };
-    }
-
-    // If we couldn't find exact matches but the task overlaps with visible periods
-    if (actualStartIndex === -1 || actualEndIndex === -1) {
-      // Find the first period that overlaps with the task
-      const firstOverlapIndex = allPeriods.findIndex(
-        (period) => period.getTime() <= task.end.getTime()
-      );
-
-      // Find the last period that overlaps with the task
-      const lastOverlapIndex = allPeriods.findLastIndex(
-        (period) => period.getTime() >= task.start.getTime()
-      );
-
-      if (firstOverlapIndex !== -1 && lastOverlapIndex !== -1) {
-        actualStartIndex = firstOverlapIndex;
-        actualEndIndex = lastOverlapIndex;
-      } else {
-        return {
-          display: 'none',
-        };
+      if (
+        task.start.getTime() >= currentPeriod.getTime() &&
+        task.start.getTime() < nextPeriod.getTime()
+      ) {
+        startBeforeIndex = i;
+        startAfterIndex = i + 1;
+        break;
       }
     }
 
+    // Find surrounding periods for end date
+    for (let i = 0; i < allPeriods.length - 1; i++) {
+      const currentPeriod = allPeriods[i];
+      const nextPeriod = allPeriods[i + 1];
+
+      if (
+        task.end.getTime() >= currentPeriod.getTime() &&
+        task.end.getTime() < nextPeriod.getTime()
+      ) {
+        endBeforeIndex = i;
+        endAfterIndex = i + 1;
+        break;
+      }
+    }
+
+    // If we couldn't find surrounding periods, try to find the closest periods
+    if (startBeforeIndex === -1) {
+      // Find closest period to start date
+      let closestStartIndex = 0;
+      let minStartDiff = Math.abs(allPeriods[0].getTime() - task.start.getTime());
+
+      for (let i = 1; i < allPeriods.length; i++) {
+        const diff = Math.abs(allPeriods[i].getTime() - task.start.getTime());
+        if (diff < minStartDiff) {
+          minStartDiff = diff;
+          closestStartIndex = i;
+        }
+      }
+
+      if (allPeriods[closestStartIndex].getTime() > task.start.getTime()) {
+        startBeforeIndex = Math.max(0, closestStartIndex - 1);
+        startAfterIndex = closestStartIndex;
+      } else {
+        startBeforeIndex = closestStartIndex;
+        startAfterIndex = Math.min(allPeriods.length - 1, closestStartIndex + 1);
+      }
+    }
+
+    if (endBeforeIndex === -1) {
+      // Find closest period to end date
+      let closestEndIndex = 0;
+      let minEndDiff = Math.abs(allPeriods[0].getTime() - task.end.getTime());
+
+      for (let i = 1; i < allPeriods.length; i++) {
+        const diff = Math.abs(allPeriods[i].getTime() - task.end.getTime());
+        if (diff < minEndDiff) {
+          minEndDiff = diff;
+          closestEndIndex = i;
+        }
+      }
+
+      if (allPeriods[closestEndIndex].getTime() > task.end.getTime()) {
+        endBeforeIndex = Math.max(0, closestEndIndex - 1);
+        endAfterIndex = closestEndIndex;
+      } else {
+        endBeforeIndex = closestEndIndex;
+        endAfterIndex = Math.min(allPeriods.length - 1, closestEndIndex + 1);
+      }
+    }
+
+    // Calculate exact positions based on time proportions
+    const startBeforeTime = allPeriods[startBeforeIndex].getTime();
+    const startAfterTime = allPeriods[startAfterIndex].getTime();
+    const endBeforeTime = allPeriods[endBeforeIndex].getTime();
+    const endAfterTime = allPeriods[endAfterIndex].getTime();
+
+    // Calculate proportions (0 to 1) for start and end positions
+    const startProportion =
+      (task.start.getTime() - startBeforeTime) / (startAfterTime - startBeforeTime);
+    const endProportion = (task.end.getTime() - endBeforeTime) / (endAfterTime - endBeforeTime);
+
+    // Calculate exact positions in rem units
+    const startPosition = (startBeforeIndex + startProportion) * periodWidth;
+    const endPosition = (endBeforeIndex + endProportion) * periodWidth;
+
     // Calculate the style object
     return {
-      left: `${actualStartIndex * periodWidth}rem`,
-      width: `${(actualEndIndex - actualStartIndex + 1) * periodWidth}rem`,
+      left: `${startPosition}rem`,
+      width: `${endPosition - startPosition}rem`,
     };
   };
 
