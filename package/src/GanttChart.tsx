@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconTarget } from '@tabler/icons-react';
-import { add, format } from 'date-fns';
+import { add, differenceInMilliseconds, format } from 'date-fns';
 import {
   ActionIcon,
   Box,
@@ -599,138 +599,38 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
 
   // Calculate task position and width
   const getTaskStyle = (task: GanttChartData) => {
-    const periodWidth = periodConfig.width;
-
     // Find the first and last visible periods
     const firstVisiblePeriod = allPeriods[0];
     const lastVisiblePeriod = allPeriods[allPeriods.length - 1];
 
-    // If we don't have any periods, hide the task
-    if (!firstVisiblePeriod || !lastVisiblePeriod) {
-      return {
-        display: 'none',
-      };
-    }
-
-    // Check if task is completely outside the visible range
+    // Check if task is completely outside the visible timeline
     if (
-      task.end.getTime() < firstVisiblePeriod.getTime() ||
-      task.start.getTime() > lastVisiblePeriod.getTime()
+      task.start.getTime() > lastVisiblePeriod.getTime() ||
+      task.end.getTime() < firstVisiblePeriod.getTime()
     ) {
       return {
         display: 'none',
       };
     }
 
-    // Find the periods before and after the task start
-    let startBeforeIndex = -1;
-    let startAfterIndex = -1;
-    let endBeforeIndex = -1;
-    let endAfterIndex = -1;
+    // Calculate time differences from the first visible period
+    const timeDiffFromStart = task.start.getTime() - firstVisiblePeriod.getTime();
+    const timeDiffFromEnd = task.end.getTime() - firstVisiblePeriod.getTime();
 
-    // Find surrounding periods for start date
-    for (let i = 0; i < allPeriods.length - 1; i++) {
-      const currentPeriod = allPeriods[i];
-      const nextPeriod = allPeriods[i + 1];
+    // Calculate period width in milliseconds using date-fns
+    const periodWidthMs = differenceInMilliseconds(
+      add(firstVisiblePeriod, periodConfig.increment),
+      firstVisiblePeriod
+    );
 
-      if (
-        task.start.getTime() >= currentPeriod.getTime() &&
-        task.start.getTime() < nextPeriod.getTime()
-      ) {
-        startBeforeIndex = i;
-        startAfterIndex = i + 1;
-        break;
-      }
-    }
+    // Calculate positions in rem units
+    const periodWidth = periodConfig.width;
+    let startPosition = (timeDiffFromStart / periodWidthMs) * periodWidth;
+    let endPosition = (timeDiffFromEnd / periodWidthMs) * periodWidth;
 
-    // Find surrounding periods for end date
-    for (let i = 0; i < allPeriods.length - 1; i++) {
-      const currentPeriod = allPeriods[i];
-      const nextPeriod = allPeriods[i + 1];
-
-      if (
-        task.end.getTime() >= currentPeriod.getTime() &&
-        task.end.getTime() < nextPeriod.getTime()
-      ) {
-        endBeforeIndex = i;
-        endAfterIndex = i + 1;
-        break;
-      }
-    }
-
-    // If we couldn't find surrounding periods, try to find the closest periods
-    if (startBeforeIndex === -1) {
-      // Find closest period to start date
-      let closestStartIndex = 0;
-      let minStartDiff = Math.abs(allPeriods[0].getTime() - task.start.getTime());
-
-      for (let i = 1; i < allPeriods.length; i++) {
-        const diff = Math.abs(allPeriods[i].getTime() - task.start.getTime());
-        if (diff < minStartDiff) {
-          minStartDiff = diff;
-          closestStartIndex = i;
-        }
-      }
-
-      if (allPeriods[closestStartIndex].getTime() > task.start.getTime()) {
-        startBeforeIndex = Math.max(0, closestStartIndex - 1);
-        startAfterIndex = closestStartIndex;
-      } else {
-        startBeforeIndex = closestStartIndex;
-        startAfterIndex = Math.min(allPeriods.length - 1, closestStartIndex + 1);
-      }
-    }
-
-    if (endBeforeIndex === -1) {
-      // Find closest period to end date
-      let closestEndIndex = 0;
-      let minEndDiff = Math.abs(allPeriods[0].getTime() - task.end.getTime());
-
-      for (let i = 1; i < allPeriods.length; i++) {
-        const diff = Math.abs(allPeriods[i].getTime() - task.end.getTime());
-        if (diff < minEndDiff) {
-          minEndDiff = diff;
-          closestEndIndex = i;
-        }
-      }
-
-      if (allPeriods[closestEndIndex].getTime() > task.end.getTime()) {
-        endBeforeIndex = Math.max(0, closestEndIndex - 1);
-        endAfterIndex = closestEndIndex;
-      } else {
-        endBeforeIndex = closestEndIndex;
-        endAfterIndex = Math.min(allPeriods.length - 1, closestEndIndex + 1);
-      }
-    }
-
-    // If the task is completely outside the visible range, hide it
-    if (startBeforeIndex === -1 && endBeforeIndex === -1) {
-      return {
-        display: 'none',
-      };
-    }
-
-    // Calculate exact positions based on time proportions
-    const startBeforeTime = allPeriods[startBeforeIndex].getTime();
-    const startAfterTime = allPeriods[startAfterIndex].getTime();
-    const endBeforeTime = allPeriods[endBeforeIndex].getTime();
-    const endAfterTime = allPeriods[endAfterIndex].getTime();
-
-    // Calculate proportions (0 to 1) for start and end positions
-    const startProportion =
-      (task.start.getTime() - startBeforeTime) / (startAfterTime - startBeforeTime);
-    const endProportion = (task.end.getTime() - endBeforeTime) / (endAfterTime - endBeforeTime);
-
-    // Calculate exact positions in rem units
-    const startPosition = (startBeforeIndex + startProportion) * periodWidth;
-
-    // If task ends after the last period, extend it to the end of the visible area
-    let endPosition;
-    if (task.end.getTime() > lastVisiblePeriod.getTime()) {
-      endPosition = allPeriods.length * periodWidth;
-    } else {
-      endPosition = (endBeforeIndex + endProportion) * periodWidth;
-    }
+    // Clamp positions to visible range
+    startPosition = Math.max(0, startPosition);
+    endPosition = Math.min(allPeriods.length * periodWidth, endPosition);
 
     // Calculate the style object
     return {
