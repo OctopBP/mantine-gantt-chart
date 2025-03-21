@@ -612,6 +612,16 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       };
     }
 
+    // Check if task is completely outside the visible range
+    if (
+      task.end.getTime() < firstVisiblePeriod.getTime() ||
+      task.start.getTime() > lastVisiblePeriod.getTime()
+    ) {
+      return {
+        display: 'none',
+      };
+    }
+
     // Find the periods before and after the task start
     let startBeforeIndex = -1;
     let startAfterIndex = -1;
@@ -691,6 +701,13 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
         endBeforeIndex = closestEndIndex;
         endAfterIndex = Math.min(allPeriods.length - 1, closestEndIndex + 1);
       }
+    }
+
+    // If the task is completely outside the visible range, hide it
+    if (startBeforeIndex === -1 && endBeforeIndex === -1) {
+      return {
+        display: 'none',
+      };
     }
 
     // Calculate exact positions based on time proportions
@@ -873,7 +890,6 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       // After the state update, scroll to the task
       setTimeout(() => {
         if (containerRef.current) {
-          // Find the task's position in the new periods
           const taskStartIndex = newPeriods.findIndex((period) =>
             periodConfig.isPeriodExactMatch(period, task.start)
           );
@@ -882,11 +898,20 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             // Calculate the target scroll position to position task at left edge with one period offset
             const targetPosition = Math.max(0, (taskStartIndex - 1) * periodWidthPx);
             containerRef.current.scrollLeft = targetPosition;
+          } else {
+            // Try to find the closest period
+            const closestIndex = newPeriods.findIndex(
+              (period) => period.getTime() > task.start.getTime()
+            );
+            if (closestIndex !== -1) {
+              const targetPosition = Math.max(0, (closestIndex - 1) * periodWidthPx);
+              containerRef.current.scrollLeft = targetPosition;
+            }
           }
         }
       }, 0);
     },
-    [periodConfig, TOTAL_PERIODS, setAllPeriods, setVisibleRange]
+    [periodConfig, TOTAL_PERIODS, setAllPeriods, setVisibleRange, scale, allPeriods, data]
   );
 
   return (
