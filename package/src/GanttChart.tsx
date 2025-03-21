@@ -1,23 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IconTarget } from '@tabler/icons-react';
-import { add, differenceInMilliseconds, format } from 'date-fns';
+import { add, differenceInMilliseconds, format } from 'date-fns'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionIcon,
-  Box,
-  BoxProps,
-  Button,
-  createVarsResolver,
-  ElementProps,
-  factory,
-  Factory,
-  MantineColor,
-  Select,
-  StylesApiProps,
-  useProps,
-  useStyles,
-} from '@mantine/core';
-import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig';
-import classes from './GanttChart.module.css';
+    ActionIcon, Box, BoxProps, Button, createVarsResolver, ElementProps, factory, Factory,
+    MantineColor, Select, StylesApiProps, useProps, useStyles
+} from '@mantine/core'
+import { IconTarget } from '@tabler/icons-react'
+import classes from './GanttChart.module.css'
+import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig'
 
 export type GanttChartStylesNames =
   | 'root'

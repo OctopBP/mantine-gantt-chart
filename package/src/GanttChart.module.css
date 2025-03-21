@@ -3,8 +3,13 @@
   flex-direction: row;
   height: 100%;
   overflow: hidden;
-  border: 1px solid var(--mantine-color-dark-4);
+  border: 1px solid var(--mantine-color-gray-3);
   border-radius: var(--mantine-radius-md);
+  background-color: var(--mantine-color-body);
+}
+
+[data-mantine-color-scheme='dark'] .root {
+  border-color: var(--mantine-color-dark-4);
 }
 
 .table {
@@ -13,7 +18,13 @@
   min-width: 12rem;
   height: 100%;
   overflow: hidden;
-  border-right: 1px solid var(--mantine-color-dark-4);
+  border-right: 1px solid var(--mantine-color-gray-3);
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .table {
+  border-right-color: var(--mantine-color-dark-4);
+  background-color: var(--mantine-color-dark-7);
 }
 
 .tableCell {
@@ -22,7 +33,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid var(--mantine-color-dark-4);
+  border-top: 1px solid var(--mantine-color-gray-2);
+}
+
+[data-mantine-color-scheme='dark'] .tableCell {
+  border-top-color: var(--mantine-color-dark-4);
 }
 
 .main {
@@ -55,7 +70,7 @@
 .periodInfo {
   font-weight: var(--mantine-font-weight-bold);
   font-size: var(--mantine-font-size-md);
-  color: var(--mantine-color-dimmed);
+  color: var(--mantine-color-gray-5);
   white-space: nowrap;
   background: linear-gradient(
     to right,
@@ -98,11 +113,15 @@
   height: 4rem;
   white-space: nowrap;
   flex-shrink: 0;
-  border-bottom: 1px solid var(--mantine-color-dark-4);
+  border-bottom: 1px solid var(--mantine-color-gray-4);
   display: flex;
-  color: var(--mantine-color-dark-3);
+  color: var(--mantine-color-gray-7);
   font-size: var(--mantine-font-size-sm);
   align-items: center;
+}
+
+[data-mantine-color-scheme='dark'] .dates {
+  border-bottom-color: var(--mantine-color-gray-6);
 }
 
 .datesContainer {
@@ -148,15 +167,19 @@
 
 /* Mark type styles for date cells */
 .dateCell[data-mark-type='weekend'] {
-  color: var(--mantine-color-red-filled);
-}
-
-.dateCell[data-mark-type='major'] {
-  color: var(--mantine-color-dark-2);
+  color: var(--mantine-color-red-6);
 }
 
 [data-mantine-color-scheme='dark'] .dateCell[data-mark-type='weekend'] {
-  color: var(--mantine-color-red-4);
+  color: var(--mantine-color-gray-4);
+}
+
+.dateCell[data-mark-type='major'] {
+  color: var(--mantine-color-gray-8);
+}
+
+[data-mantine-color-scheme='dark'] .dateCell[data-mark-type='major'] {
+  color: var(--mantine-color-gray-4);
 }
 
 .periodHeader {
@@ -165,7 +188,7 @@
   text-align: left;
   font-weight: var(--mantine-font-weight-bold);
   font-size: var(--mantine-font-size-md);
-  color: var(--mantine-color-dimmed);
+  color: var(--mantine-color-gray-7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -195,31 +218,47 @@
 
 .periodGridLine {
   width: 2rem;
-  border-left: 1px solid var(--mantine-color-dark-5);
-  border-right: 1px solid var(--mantine-color-dark-5);
+  border-left: 1px solid var(--mantine-color-gray-2);
+  border-right: 1px solid var(--mantine-color-gray-2);
   height: 100%;
+}
+
+[data-mantine-color-scheme='dark'] .periodGridLine {
+  border-left-color: var(--mantine-color-dark-4);
+  border-right-color: var(--mantine-color-dark-4);
 }
 
 /* Mark type styles for grid lines */
 .periodGridLine[data-mark-type='weekend'] {
-  background-color: var(--mantine-color-dark-4);
-}
-
-.periodGridLine[data-mark-type='major'] {
-  border-left: 1px solid var(--mantine-color-dark-3);
-}
-
-.periodGridLine[data-mark-type='minor'] {
-  border-left: 1px solid var(--mantine-color-dark-5);
-}
-
-.periodGridLine[data-mark-type='none'] {
-  border-left: 1px dashed var(--mantine-color-dark-6);
+  background-color: var(--mantine-color-gray-1);
 }
 
 [data-mantine-color-scheme='dark'] .periodGridLine[data-mark-type='weekend'] {
   background-color: var(--mantine-color-dark-6);
-  border-right-color: var(--mantine-color-dark-4);
+}
+
+.periodGridLine[data-mark-type='major'] {
+  border-left: 1px solid var(--mantine-color-gray-4);
+}
+
+[data-mantine-color-scheme='dark'] .periodGridLine[data-mark-type='major'] {
+  border-left-color: var(--mantine-color-dark-3);
+}
+
+.periodGridLine[data-mark-type='minor'] {
+  border-left: 1px solid var(--mantine-color-gray-2);
+}
+
+[data-mantine-color-scheme='dark'] .periodGridLine[data-mark-type='minor'] {
+  border-left-color: var(--mantine-color-dark-4);
+}
+
+.periodGridLine[data-mark-type='none'] {
+  border-left: 1px dashed var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme='dark'] .periodGridLine[data-mark-type='none'] {
+  border-left-color: var(--mantine-color-dark-5);
 }
 
 .taskLine {
@@ -232,25 +271,35 @@
   position: absolute;
   height: 2rem;
   top: 0.25rem;
-  background-color: var(--mantine-color-dark-5);
-  color: var(--mantine-color-white);
+  background-color: var(--mantine-color-white);
+  color: var(--mantine-color-gray-8);
   border-radius: var(--mantine-radius-sm);
   padding: 0 var(--mantine-spacing-xs);
   font-weight: var(--mantine-font-weight-bold);
+  font-size: var(--mantine-font-size-sm);
   display: flex;
   align-items: center;
-  font-size: var(--mantine-font-size-sm);
   overflow: visible;
   text-overflow: clip;
   white-space: nowrap;
   cursor: pointer;
-  border: 1px solid var(--mantine-color-dark-3);
+  border: 1px solid var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme='dark'] .task {
+  background-color: var(--mantine-color-dark-6);
+  color: var(--mantine-color-gray-0);
+  border-color: var(--mantine-color-dark-4);
 }
 
 .task:hover {
-  background-color: var(--mantine-color-dark-4);
+  background-color: var(--mantine-color-gray-1);
   transform: translateY(-1px);
   box-shadow: var(--mantine-shadow-sm);
+}
+
+[data-mantine-color-scheme='dark'] .task:hover {
+  background-color: var(--mantine-color-dark-5);
 }
 
 .headerDate {
@@ -284,10 +333,18 @@
 
 .taskName {
   flex: 1;
-  color: var(--mantine-color-dark-0);
+  color: var(--mantine-color-gray-8);
   font-size: var(--mantine-font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-right: var(--mantine-spacing-xs);
+}
+
+[data-mantine-color-scheme='dark'] .taskName {
+  color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .dateCell {
+  color: var(--mantine-color-gray-5);
 }
