@@ -1,7 +1,12 @@
 import {
-    Duration, getMonth, isSameDay, isSameHour, isSameMonth, isSameYear,
-    isWeekend as dateFnsIsWeekend
-} from 'date-fns'
+  isWeekend as dateFnsIsWeekend,
+  Duration,
+  getMonth,
+  isSameDay,
+  isSameHour,
+  isSameMonth,
+  isSameYear,
+} from 'date-fns';
 
 export type PeriodScale =
   | 'hours' // 15 min periods
@@ -191,7 +196,7 @@ export const PERIOD_CONFIGS: Record<PeriodScale, PeriodConfig> = {
   },
   'bi-week': {
     width: 3.5,
-    labelFormat: 'd.M', // Day of month
+    labelFormat: 'd', // Day of month
     headerFormat: 'MMMM yyyy',
     periodHeaderFormat: 'MMMM',
     increment: { days: 1 },
