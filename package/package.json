@@ -1,6 +1,6 @@
 {
   "name": "mantine-gantt-chart",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Gantt chart component for Mantine",
   "homepage": "https://github.com/OctopBP/mantine-gantt-chart#readme",
   "packageManager": "yarn@4.0.1",
