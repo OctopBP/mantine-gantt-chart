@@ -13,8 +13,8 @@ export default function HomePage() {
       <PageHeader data={PACKAGE_DATA} />
       <DocsTabs
         docgen={docgen}
-        componentsProps={['TestComponent']}
-        componentsStyles={['TestComponent']}
+        componentsProps={['GanttChart']}
+        componentsStyles={['GanttChart']}
         stylesApiData={STYLES_API_DATA}
       >
         <Docs />

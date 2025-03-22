@@ -32,7 +32,7 @@ export const PACKAGE_DATA: PackageData = {
   repositoryUrl: 'https://github.com/OctopBP/mantine-gantt-chart',
   licenseUrl: 'https://github.com/OctopBP/mantine-gantt-chart/blob/master/LICENSE',
   author: {
-    name: 'Vitaly Rtishchev',
-    githubUsername: 'rtivital',
+    name: 'Boris Proshin',
+    githubUsername: 'OctopBP',
   },
 };

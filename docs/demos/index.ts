@@ -1,2 +1,2 @@
-export { usage } from './TestComponent.demo.usage';
-export { configurator } from './TestComponent.demo.configurator';
+export { usage } from './GanttChart.demo.usage';
+export { configurator } from './GanttChart.demo.configurator';
