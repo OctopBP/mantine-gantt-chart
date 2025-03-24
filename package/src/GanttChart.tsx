@@ -1,23 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { IconTarget } from '@tabler/icons-react';
-import { add, differenceInMilliseconds, format } from 'date-fns';
+import { add, differenceInMilliseconds, format } from 'date-fns'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActionIcon,
-  Box,
-  BoxProps,
-  Button,
-  createVarsResolver,
-  ElementProps,
-  factory,
-  Factory,
-  MantineColor,
-  Select,
-  StylesApiProps,
-  useProps,
-  useStyles,
-} from '@mantine/core';
-import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig';
-import classes from './GanttChart.module.css';
+    ActionIcon, Box, BoxProps, Button, createVarsResolver, ElementProps, factory, Factory,
+    getThemeColor, MantineColor, Select, StylesApiProps, useProps, useStyles
+} from '@mantine/core'
+import { IconTarget } from '@tabler/icons-react'
+import classes from './GanttChart.module.css'
+import { PERIOD_CONFIGS, PeriodScale } from './GanttChartPeriodConfig'
 
 export type GanttChartStylesNames =
   | 'root'
@@ -55,7 +44,9 @@ export type GanttChartStylesNames =
   | 'scrollToTaskButton'
   | 'taskName';
 
-export type GanttChartCssVariables = {};
+export type GanttChartCssVariables = {
+  root: '--test-component-color';
+};
 
 export interface GanttChartData {
   id: string;
@@ -68,23 +59,17 @@ export interface GanttChartProps
   extends BoxProps,
     StylesApiProps<GanttChartFactory>,
     ElementProps<'div'> {
-  /** Data for the Gantt chart */
+  /** Label displayed inside the component, `'Test component'` by default */
+  label?: React.ReactNode;
+
   data: GanttChartData[];
 
-  /** The date that is currently focused */
-  focusedDate?: Date;
+  showTable?: boolean;
+
+  scale?: 'day' | 'week' | 'month' | 'quarter' | 'year';
 
   /** Controls `background-color` of the root element, key of `theme.colors` or any valid CSS color, `theme.primaryColor` by default */
   color?: MantineColor;
-
-  /** Current period scale */
-  scale?: PeriodScale;
-
-  /** Called when scale changes */
-  onScaleChange?: (scale: PeriodScale) => void;
-
-  /** Whether to show the table with task names on the left, defaults to true */
-  showTable?: boolean;
 }
 
 export type GanttChartFactory = Factory<{
@@ -95,13 +80,16 @@ export type GanttChartFactory = Factory<{
 }>;
 
 const defaultProps: Partial<GanttChartProps> = {
+  label: 'Test component',
   data: [],
-  scale: 'day',
   showTable: true,
+  scale: 'day',
 };
 
-const varsResolver = createVarsResolver<GanttChartFactory>(() => ({
-  root: {},
+const varsResolver = createVarsResolver<GanttChartFactory>((theme, { color }) => ({
+  root: {
+    '--test-component-color': getThemeColor(color, theme),
+  },
 }));
 
 const SCALE_OPTIONS = [
@@ -114,7 +102,6 @@ const SCALE_OPTIONS = [
   { value: 'year', label: 'Year' },
   { value: '5-years', label: '5 Years' },
 ];
-
 export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const props = useProps('GanttChart', defaultProps, _props);
   const {
@@ -124,10 +111,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
     styles,
     unstyled,
     vars,
+    label,
     data,
-    focusedDate,
-    scale: externalScale,
-    onScaleChange,
     showTable,
     ...others
   } = props;
@@ -138,7 +123,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
   const SCROLL_THRESHOLD = 0.1; // When to shift the window (10% from edge)
   const PERIODS_TO_SHIFT = 100; // Number of periods to shift when reaching threshold
 
-  const [scale, setInternalScale] = useState<PeriodScale>(externalScale || 'day');
+  const [scale, setInternalScale] = useState<PeriodScale>('day');
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleRange, setVisibleRange] = useState({ startIndex: 0, endIndex: 50 });
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -841,13 +826,15 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
             {data.map((d) => (
               <Box {...getStyles('tableCell')} key={d.id}>
                 <span {...getStyles('taskName')}>{d.name}</span>
+
                 <ActionIcon
                   variant="default"
+                  color="gray"
+                  aria-label="Scroll to task"
                   size="sm"
                   onClick={() => scrollToTask(d)}
-                  title="Scroll to task"
                 >
-                  <IconTarget size={14} />
+                  <IconTarget size={16} />
                 </ActionIcon>
               </Box>
             ))}
@@ -858,8 +845,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
       <Box {...getStyles('main')}>
         {/* Controls with height 0 to overlay without taking space */}
         <Box {...getStyles('controls')}>
-          <div {...getStyles('controlsContainer')}>
-            <div {...getStyles('periodInfo')}>
+          <Box {...getStyles('controlsContainer')}>
+            <Box {...getStyles('periodInfo')}>
               {visibleRange.startIndex < allPeriods.length &&
               allPeriods[Math.max(0, visibleRange.startIndex)]
                 ? format(
@@ -867,8 +854,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                     periodConfig.headerFormat
                   )
                 : ''}
-            </div>
-            <div {...getStyles('controlActions')}>
+            </Box>
+            <Box {...getStyles('controlActions')}>
               <Button
                 variant="transparent"
                 size="compact-sm"
@@ -886,24 +873,20 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                 onChange={(value) => {
                   if (value) {
                     const newScale = value as PeriodScale;
-                    if (onScaleChange) {
-                      onScaleChange(newScale);
-                    } else {
-                      setInternalScale(newScale);
-                    }
+                    setInternalScale(newScale);
                   }
                 }}
               />
-            </div>
-          </div>
+            </Box>
+          </Box>
         </Box>
 
         <Box {...getStyles('scrollArea')} ref={containerRef} onScroll={handleScroll}>
-          <div {...getStyles('chartContent')} style={{ width: totalWidth }}>
+          <Box {...getStyles('chartContent')} style={{ width: totalWidth }}>
             <Box {...getStyles('dates')}>
-              <div {...getStyles('datesContainer')} style={{ left: periodsOffset }}>
+              <Box {...getStyles('datesContainer')} style={{ left: periodsOffset }}>
                 {/* Period headers row */}
-                <div {...getStyles('periodHeadersRow')}>
+                <Box {...getStyles('periodHeadersRow')}>
                   {(() => {
                     // Group periods by their group key (e.g., month or year)
                     const groups: {
@@ -937,7 +920,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                       const width = group.periods.length * periodConfig.width;
 
                       return (
-                        <div
+                        <Box
                           key={group.key}
                           {...getStyles('periodHeaderGroup')}
                           style={{
@@ -945,15 +928,15 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                             width: `${width}rem`,
                           }}
                         >
-                          <div {...getStyles('periodHeader')}>{group.displayName}</div>
-                        </div>
+                          <Box {...getStyles('periodHeader')}>{group.displayName}</Box>
+                        </Box>
                       );
                     });
                   })()}
-                </div>
+                </Box>
 
                 {/* Date cells row */}
-                <div {...getStyles('dateCellsRow')}>
+                <Box {...getStyles('dateCellsRow')}>
                   {visiblePeriods.map((period, index) => (
                     <Box
                       {...getStyles('dateCell')}
@@ -966,8 +949,8 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                       <span>{formatPeriodLabel(period)}</span>
                     </Box>
                   ))}
-                </div>
-              </div>
+                </Box>
+              </Box>
             </Box>
             <Box {...getStyles('tasksView')}>
               <Box {...getStyles('periodGrid')} style={{ left: periodsOffset }}>
@@ -987,7 +970,7 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
               {getTodayPosition && (
                 <Box {...getStyles('todayLine')} style={{ left: getTodayPosition }} title="Today" />
               )}
-              <div {...getStyles('tasksContainer')} style={{ width: totalWidth }}>
+              <Box {...getStyles('tasksContainer')} style={{ width: totalWidth }}>
                 {data.map((d) => (
                   <Box {...getStyles('taskLine')} key={d.id}>
                     <Box {...getStyles('task')} style={getTaskStyle(d)}>
@@ -995,14 +978,14 @@ export const GanttChart = factory<GanttChartFactory>((_props, ref) => {
                     </Box>
                   </Box>
                 ))}
-              </div>
+              </Box>
             </Box>
-          </div>
+          </Box>
         </Box>
       </Box>
     </Box>
   );
 });
 
+GanttChart.displayName = 'GanttChart';
 GanttChart.classes = classes;
-GanttChart.displayName = 'OctopBP/mantine-gantt-chart/GanttChart';

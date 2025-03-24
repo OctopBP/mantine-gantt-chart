@@ -15,7 +15,7 @@
 .table {
   /* 1px for borders, to align with the dates row */
   padding-top: calc(4rem - 1px);
-  min-width: 12rem;
+  min-width: 10rem;
   height: 100%;
   overflow: hidden;
   border-right: 1px solid var(--mantine-color-gray-3);

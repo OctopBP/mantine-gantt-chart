@@ -43,7 +43,7 @@ export function Short() {
             end: new Date(2025, 2, 17, 0),
           },
         ]}
-        scale="bi-week"
+        scale="week"
       />
     </div>
   );

@@ -1,7 +1,7 @@
-import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MantineProvider } from '@mantine/core';
-import { GanttChart } from './GanttChart';
+import React from 'react'
+import { MantineProvider } from '@mantine/core'
+import { render, screen } from '@testing-library/react'
+import { GanttChart } from './GanttChart'
 
 const mockData = [
   {
@@ -52,23 +52,6 @@ describe('GanttChart', () => {
     // Check if controls are rendered
     expect(screen.getByText('Today')).toBeInTheDocument();
     expect(screen.getByRole('textbox')).toBeInTheDocument();
-  });
-
-  it('changes scale when scale selector is changed', () => {
-    const onScaleChange = jest.fn();
-    renderWithMantine(<GanttChart data={mockData} onScaleChange={onScaleChange} />);
-
-    // Get the select input
-    const selectInput = screen.getByRole('textbox');
-
-    // Click the input to open the dropdown
-    fireEvent.click(selectInput);
-
-    // Find and click the "Week" option
-    const weekOption = screen.getByText('Week');
-    fireEvent.click(weekOption);
-
-    expect(onScaleChange).toHaveBeenCalledWith('week');
   });
 
   it('renders task bars with correct positioning', () => {
