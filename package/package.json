@@ -30,6 +30,10 @@
     "./styles.layer.css": "./dist/styles.layer.css"
   },
   "repository": "https://github.com/OctopBP/mantine-gantt-chart.git",
+  "dependencies": {
+    "@tabler/icons-react": "^3.31.0",
+    "date-fns": "^4.1.0"
+  },
   "peerDependencies": {
     "@mantine/core": ">=7.0.0",
     "@mantine/hooks": ">=7.0.0",

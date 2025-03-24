@@ -3138,10 +3138,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tabler/icons-react@npm:^3.31.0":
+  version: 3.31.0
+  resolution: "@tabler/icons-react@npm:3.31.0"
+  dependencies:
+    "@tabler/icons": "npm:3.31.0"
+  peerDependencies:
+    react: ">= 16"
+  checksum: 10c0/aceefe1b6c12a2e64921900f49c09c0c24bcd837dfb3d4274914065e33a5175944f1e25ce9a80d110272e5ae0fefc24062a38f1ec75a4ec79c63d40acb9d1d12
+  languageName: node
+  linkType: hard
+
 "@tabler/icons@npm:3.29.0":
   version: 3.29.0
   resolution: "@tabler/icons@npm:3.29.0"
   checksum: 10c0/2a7439428cbe6c197ddf4416e55897926bf525e69d317ae69e6a84ad6e9e37f29c0125cf495508b5463e3b3aaa10c1c7667750a0631b0fa3941cb2ce7a50a488
+  languageName: node
+  linkType: hard
+
+"@tabler/icons@npm:3.31.0":
+  version: 3.31.0
+  resolution: "@tabler/icons@npm:3.31.0"
+  checksum: 10c0/03fcfff0b705e1474030acee2ff0523bfa1fda7a29a33d031a9fd8e3b52ecc2e0380f9cf5e81bd054b30dc0acdb819b1e08ab746805be8d660934a08b2c3545e
   languageName: node
   linkType: hard
 
@@ -10135,7 +10153,6 @@ __metadata:
     "@types/signale": "npm:^1"
     "@types/yargs": "npm:^17.0.33"
     "@vitejs/plugin-react": "npm:^4.3.4"
-    date-fns: "npm:^4.1.0"
     esbuild: "npm:^0.24.2"
     esbuild-jest: "npm:^0.5.0"
     eslint: "npm:^9.19.0"
@@ -10298,6 +10315,9 @@ __metadata:
 "mantine-gantt-chart@workspace:*, mantine-gantt-chart@workspace:package":
   version: 0.0.0-use.local
   resolution: "mantine-gantt-chart@workspace:package"
+  dependencies:
+    "@tabler/icons-react": "npm:^3.31.0"
+    date-fns: "npm:^4.1.0"
   peerDependencies:
     "@mantine/core": ">=7.0.0"
     "@mantine/hooks": ">=7.0.0"
