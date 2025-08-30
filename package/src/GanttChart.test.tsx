@@ -1,7 +1,7 @@
-import React from 'react'
-import { MantineProvider } from '@mantine/core'
-import { render, screen } from '@testing-library/react'
-import { GanttChart } from './GanttChart'
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+import { MantineProvider } from '@mantine/core';
+import { GanttChart } from './GanttChart';
 
 const mockData = [
   {
