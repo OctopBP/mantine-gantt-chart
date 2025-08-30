@@ -7,10 +7,10 @@
   "license": "MIT",
   "author": "Boris Proshin <kaktusao@mail.ru>",
   "keywords": [
+    "chart",
     "extension",
-    "mantine",
     "gantt",
-    "chart"
+    "mantine"
   ],
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/esm/index.mjs",
@@ -30,15 +30,15 @@
     "./styles.layer.css": "./dist/styles.layer.css"
   },
   "repository": "https://github.com/OctopBP/mantine-gantt-chart.git",
-  "dependencies": {
-    "@tabler/icons-react": "^3.31.0",
-    "date-fns": "^4.1.0"
-  },
   "peerDependencies": {
     "@mantine/core": ">=7.0.0",
     "@mantine/hooks": ">=7.0.0",
     "react": "^18.x || ^19.x",
     "react-dom": "^18.x || ^19.x"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "^3.34.1",
+    "date-fns": "^4.1.0"
   },
   "bugs": "https://github.com/OctopBP/mantine-gantt-chart/issues"
 }
